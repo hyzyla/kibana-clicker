@@ -1,4 +1,4 @@
-console.log("Kibana Clicker is started");
+console.log("Kibana Clicker is started.");
 
 const KIBANA_CLICKER_INJECTED_ATTRIBUTE = "kibana-clicker-injected";
 const FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
