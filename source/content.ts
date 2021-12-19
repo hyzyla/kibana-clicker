@@ -20,6 +20,7 @@ function createLink(name: string, value: string): Element {
     const link = document.createElement("a");
     const URL = `/app/discover#/?_a=(query:(language:kuery,query:'${name}:"${value}"'))`;
     link.setAttribute("href", URL);
+    link.classList.add("kibana-clicker-link");
     link.textContent = value;
     return link;
 }

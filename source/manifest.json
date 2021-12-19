@@ -27,6 +27,9 @@
       ],
       "js": [
         "content.ts"
+      ],
+      "css": [
+        "content.css"
       ]
     }
   ],

@@ -4,6 +4,7 @@ The extension creates links for quick filtering logs in Kibana.
 
 ![screenshot of extension](media/window-screenshoot.png)
 
+[Kibana demo site](https://demo.elastic.co/app/discover#/)
 ### Build locally
 
 1. run `npm install` to install all required dependencies
