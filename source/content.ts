@@ -1,7 +1,6 @@
-console.log("Kibana Clicker is started.");
-
 const KIBANA_CLICKER_INJECTED_ATTRIBUTE = "kibana-clicker-injected";
 const FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
+let IS_KIBANA_DETECTED = false;
 
 function getFieldName(element: Element): string | null {
     const subjectAttr = element.getAttribute("data-test-subj") ?? "";
@@ -27,6 +26,7 @@ function createLink(name: string, value: string): Element {
 
 function handleKibanaDetected() {
     console.log("Kibana detected");
+    IS_KIBANA_DETECTED = true;
 }
 
 function handleDocumentViewer(viewer: Element) {
@@ -55,6 +55,10 @@ function handleNewNode(node: Node) {
 
     if (node.id === "kibana-body") {
         return handleKibanaDetected();
+    }
+
+    if (!IS_KIBANA_DETECTED) {
+        return;
     }
 
     if (node.classList.contains("kbnDocViewer")) {
