@@ -61,12 +61,18 @@ function handleNewNode(node: Node) {
         return;
     }
 
-    if (node.classList.contains("kbnDocViewer")) {
-        return handleDocumentViewer(node);
-    }
     if (node.attributes.getNamedItem("data-test-subj")?.value === "kbnDocViewer") {
         return handleDocumentViewer(node);
     }
+
+    if (node.classList.contains("kbnDocViewer")) {
+        return handleDocumentViewer(node);
+    }
+
+    if (node.querySelector('.kbnDocViewer') !== null) {
+        return handleDocumentViewer(node);
+    }
+
 }
 
 
