@@ -3,7 +3,9 @@
   "scripts": {
     "build": "parcel build source/manifest.json --no-content-hash --no-source-maps --dist-dir distribution --no-cache --detailed-report 0",
     "watch": "parcel watch source/manifest.json --dist-dir distribution --no-cache --no-hmr",
-    "lint": "npx eslint source"
+    "lint": "npx eslint source",
+    "start:firefox": "web-ext run",
+    "start:chrome": "web-ext run -t chromium"
   },
   "browserslist": [
     "last 1 Chrome version",
@@ -20,7 +22,8 @@
     "@typescript-eslint/parser": "^5.7.0",
     "eslint": "^7.32.0",
     "npm-run-all": "^4.1.5",
-    "parcel": "^2.0.0-rc.0"
+    "parcel": "^2.0.0-rc.0",
+    "web-ext": "^6.6.0"
   },
   "webExt": {
     "sourceDir": "distribution"

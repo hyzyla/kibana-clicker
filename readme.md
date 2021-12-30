@@ -15,14 +15,9 @@ the generated extension.
 
 ### Run the extension
 
-Using [web-ext](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/)
-is recommended for automatic reloading and running in a dedicated browser
-instance. Alternatively you can load the extension manually (see below).
-
 1. run `npm run watch` to watch for file changes and build continuously
-2. run `npm install --global web-ext` (only for the first time)
-3. in another terminal, run `web-ext run` for Firefox
-   or `web-ext run -t chromium`
+2. in another terminal, run `npm run start:firefox` for Firefox
+   or `npm run start:chrome` for Chrome.
 
 
 ### Other
