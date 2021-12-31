@@ -69,7 +69,7 @@ function handleNewNode(node: Node) {
         return handleDocumentViewer(node);
     }
 
-    if (node.querySelector('.kbnDocViewer') !== null) {
+    if (node.querySelector(".kbnDocViewer") !== null) {
         return handleDocumentViewer(node);
     }
 
