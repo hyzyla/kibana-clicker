@@ -32,8 +32,5 @@
         "content.css"
       ]
     }
-  ],
-  "permissions": [
-    "activeTab"
   ]
 }

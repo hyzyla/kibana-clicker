@@ -27,16 +27,26 @@ function createLink(name: string, value: string): Element {
 }
 
 function handleKibanaDetected() {
-    console.log("Kibana detected");
+    console.log("KibanaClicker: Kibana is detected");
     IS_KIBANA_DETECTED = true;
 }
 
-function handleDocumentViewer(viewer: Element) {
+function handleDocumentViewer(viewer: Element, iteration = 0) {
+    if (iteration > 10) {
+        console.log("KibanaClicker: More than expected iterations");
+        return;
+    }
     if (viewer.getAttribute(KIBANA_CLICKER_INJECTED_ATTRIBUTE) != null) {
         return;
     }
-
-    const rows = viewer.querySelectorAll("table tr td div[data-test-subj^='tableDocViewRow-']");
+    const rows = viewer.querySelectorAll("table div[data-test-subj^='tableDocViewRow-']");
+    if (rows.length === 0) {
+        setTimeout(
+            () => handleDocumentViewer(viewer, iteration + 1),
+            1000,
+        );
+        return;
+    }
     rows.forEach((row) => {
         const fieldName = getFieldName(row);
         if (!fieldName) {
@@ -71,8 +81,9 @@ function handleNewNode(node: Node) {
         return handleDocumentViewer(node);
     }
 
-    if (node.querySelector(".kbnDocViewer") !== null) {
-        return handleDocumentViewer(node);
+    const viewer = node.querySelector(".kbnDocViewer");
+    if (viewer !== null) {
+        return handleDocumentViewer(viewer);
     }
 
 }
