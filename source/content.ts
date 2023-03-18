@@ -22,7 +22,8 @@ function getFieldValue(element: Element): string {
 function createLink(name: string, value: string): Element {
     const link = document.createElement("a");
     const _a = `_a=(query:(language:kuery,query:'${name}:"${value}"'))`;
-    const URL = `/app/discover#/?${KIBANA_G_TIME}&${_a}`;
+    const hash = [KIBANA_G_TIME, _a].filter(t => !!t).join("&");
+    const URL = `/app/discover#/?${hash}`;
     link.setAttribute("href", URL);
     link.setAttribute("target", "_blank");
     link.setAttribute("rel", "noreferrer noopener");
