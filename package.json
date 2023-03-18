@@ -22,10 +22,15 @@
     "@typescript-eslint/parser": "^5.7.0",
     "eslint": "^7.32.0",
     "npm-run-all": "^4.1.5",
-    "parcel": "^2.0.0-rc.0",
+    "parcel": "^2.8.3",
     "web-ext": "^6.6.0"
   },
   "webExt": {
-    "sourceDir": "distribution"
+    "sourceDir": "distribution",
+    "run": {
+      "startUrl": [
+        "https://demo.elastic.co/app/discover"
+      ]
+    }
   }
 }
