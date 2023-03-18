@@ -1,12 +1,15 @@
 const KIBANA_CLICKER_INJECTED_ATTRIBUTE = "kibana-clicker-injected";
 const FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
+const KIBANA_HASH_G_TIME_REGEXP = /(?<time>time:\([^)]*\))/;
+
 let IS_KIBANA_DETECTED = false;
+let KIBANA_G_TIME = "";
 
 function getFieldName(element: Element): string | null {
     const subjectAttr = element.getAttribute("data-test-subj") ?? "";
     const search = subjectAttr.match(FIELD_NAME_REGEXP);
     if (search === null || !search.groups) {
-        return;
+        return null;
     }
     return search.groups.fieldName;
 }
@@ -15,9 +18,11 @@ function getFieldValue(element: Element): string {
     return element.textContent;
 }
 
+
 function createLink(name: string, value: string): Element {
     const link = document.createElement("a");
-    const URL = `/app/discover#/?_a=(query:(language:kuery,query:'${name}:"${value}"'))`;
+    const _a = `_a=(query:(language:kuery,query:'${name}:"${value}"'))`;
+    const URL = `/app/discover#/?${KIBANA_G_TIME}&${_a}`;
     link.setAttribute("href", URL);
     link.setAttribute("target", "_blank");
     link.setAttribute("rel", "noreferrer noopener");
@@ -47,6 +52,7 @@ function handleDocumentViewer(viewer: Element, iteration = 0) {
         );
         return;
     }
+
     rows.forEach((row) => {
         const fieldName = getFieldName(row);
         if (!fieldName) {
@@ -87,6 +93,27 @@ function handleNewNode(node: Node) {
     }
 
 }
+
+function getGTimeParam(hash: string): string {
+    const match = hash.match(KIBANA_HASH_G_TIME_REGEXP);
+    if (match && match.groups && match.groups.time) {
+        return `_g=(${match.groups.time})`;
+    }
+    return "";
+}
+
+function onHashChange(event: HashChangeEvent) {
+    if (!IS_KIBANA_DETECTED) {
+        return;
+    }
+
+    const newHash = event.newURL.split("#")[1];
+    if (!newHash) return;
+
+    KIBANA_G_TIME = getGTimeParam(newHash);
+}
+
+window.addEventListener("hashchange", onHashChange);
 
 
 const observer = new MutationObserver((mutations) => {
