@@ -23,10 +23,18 @@ jobs:
         run: npm ci
       - name: Build the extension
         run: npm run build
-      - name: Package the extension into a zip artifact
-        run: npm run package
+      - name: Package Chrome extension into a zip artifact
+        run: npm run package:chrome
+      - name: Package Firefox extension into a zip artifact
+        run: npm run package:firefox
       - name: Browser Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:
           keys: ${{ secrets.BPP_KEYS }}
           artifact: build/chrome-mv3-prod.zip
+      - name: Browser Platform Publish
+        uses: PlasmoHQ/bpp@v3
+        with:
+          keys: ${{ secrets.BPP_KEYS }}
+          artifact: build/firefox-mv3-prod.zip
+          
