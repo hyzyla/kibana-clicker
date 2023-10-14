@@ -30,4 +30,4 @@ jobs:
         with:
           keys: ${{ secrets.BPP_KEYS }}
           chrome-file: build/chrome-mv3-prod.zip
-          firefox-file: build/firefox-mv3-prod.zip
+          firefox-file: build/firefox-mv2-prod.zip

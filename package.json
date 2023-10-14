@@ -1,14 +1,14 @@
 {
   "name": "kibana-clicker",
   "displayName": "Kibana Clicker",
-  "version": "23.10.15",
+  "version": "2023.10.15.1",
   "description": "Automation tool for Kibana",
   "author": "Yevhenii Hyzyla <hyzyla@gmail.com>",
   "homepage": "https://github.com/hyzyla/kibana-clicker",
   "scripts": {
     "dev": "plasmo dev",
     "build:chrome": "plasmo build --target=chrome-mv3 --zip",
-    "build:firefox": "plasmo build --target=firefox-mv3 --zip",
+    "build:firefox": "plasmo build --target=firefox-mv2 --zip",
     "test": "plasmo test"
   },
   "dependencies": {
