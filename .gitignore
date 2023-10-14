@@ -31,3 +31,9 @@ dist/
 
 # typescript
 .tsbuildinfo
+
+# Chrome OAuth2 key
+key.json
+
+# Plasmo publish keys
+keys.json

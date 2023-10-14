@@ -1,3 +1,24 @@
+# Kibana Clicker — browser extension for Kibana
+
+The extension creates links for quick filtering logs in Kibana.
+
+![screenshot of extension](media/window-screenshoot.png)
+
+[Kibana demo site](https://demo.elastic.co/app/discover#/)
+
+### Build locally
+
+### Run the extension
+
+### Other
+
+### Create source archive for AMO verification
+
+1. Run `npm run source`
+2. Now you can find source code at root directory by the name `source.zip`
+
+=======================
+
 This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
 
 ## Getting Started
