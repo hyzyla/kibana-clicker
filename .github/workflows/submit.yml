@@ -23,12 +23,22 @@ jobs:
             ${{ runner.os }}-npm-
       - name: Install dependencies
         run: npm ci
+      - name: Archive node_modules
+        uses: actions/upload-artifact@v2
+        with:
+          name: node-modules
+          path: node_modules
 
   publish-chrome:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Download node_modules
+        uses: actions/download-artifact@v2
+        with:
+          name: node-modules
+          path: node_modules
       - name: Package Chrome extension into a zip artifact
         run: npm run build:chrome
       - name: Chrome Platform Publish
@@ -42,6 +52,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Download node_modules
+        uses: actions/download-artifact@v2
+        with:
+          name: node-modules
+          path: node_modules
       - name: Package Firefox extension into a zip artifact
         run: npm run build:firefox
       - name: Firefox Platform Publish
