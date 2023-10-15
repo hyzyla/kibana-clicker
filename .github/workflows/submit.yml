@@ -5,7 +5,7 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  publish-chrome:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,46 +18,37 @@ jobs:
         with:
           path: node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          # If cache not found, use latest cache instead of having a cache miss
           restore-keys: |
             ${{ runner.os }}-npm-
       - name: Install dependencies
         run: npm ci
-      - name: Archive node_modules
-        uses: actions/upload-artifact@v2
-        with:
-          name: node-modules
-          path: node_modules
-
-  publish-chrome:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Download node_modules
-        uses: actions/download-artifact@v2
-        with:
-          name: node-modules
-          path: node_modules
-      - name: Package Chrome extension into a zip artifact
+      - name: Build Chrome extension
         run: npm run build:chrome
       - name: Chrome Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:
           keys: ${{ secrets.BPP_CHROME_KEYS }}
           chrome-file: build/chrome-mv3-prod.zip
-      
+
+
   publish-firefox:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Download node_modules
-        uses: actions/download-artifact@v2
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3.4.1
         with:
-          name: node-modules
+          node-version: 16.x
+      - name: Cache npm modules
+        uses: actions/cache@v2
+        with:
           path: node_modules
-      - name: Package Firefox extension into a zip artifact
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Firefox extension
         run: npm run build:firefox
       - name: Firefox Platform Publish
         uses: PlasmoHQ/bpp@v3
