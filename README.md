@@ -20,3 +20,10 @@ Then load the extension in your browser (only once) by following this guide in P
 2. Run `npm version patch` to bump the version number. It will create a new commit and tag.
 3. Push the new commit and tag to the main branch `git push --follow-tags origin main`.
 4. Open Actions page on GitHub and check status of the [Publish to Chrome Web Store](https://github.com/hyzyla/kibana-clicker/actions/workflows/submit.yml) workflow
+
+### TODO:
+
+- [ ] Add support for OpenSearch
+- [ ] Add documentation about project structure
+- [ ] Add links on document page
+- [ ] Add LICENSE
