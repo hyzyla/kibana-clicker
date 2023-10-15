@@ -1,33 +1,51 @@
 name: "Submit to Web Store"
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Cache npm modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
       - name: Use Node.js 16.x
         uses: actions/setup-node@v3.4.1
         with:
           node-version: 16.x
-          cache: "npm"
+      - name: Cache npm modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          # If cache not found, use latest cache instead of having a cache miss
+          restore-keys: |
+            ${{ runner.os }}-npm-
       - name: Install dependencies
         run: npm ci
+
+  publish-chrome:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Package Chrome extension into a zip artifact
         run: npm run build:chrome
-      - name: Package Firefox extension into a zip artifact
-        run: npm run build:firefox
-      - name: Browser Platform Publish
+      - name: Chrome Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:
-          keys: ${{ secrets.BPP_KEYS }}
+          keys: ${{ secrets.BPP_CHROME_KEYS }}
           chrome-file: build/chrome-mv3-prod.zip
+      
+  publish-firefox:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Package Firefox extension into a zip artifact
+        run: npm run build:firefox
+      - name: Firefox Platform Publish
+        uses: PlasmoHQ/bpp@v3
+        with:
+          keys: ${{ secrets.BPP_FIREFOX_KEYS }}
           firefox-file: build/firefox-mv2-prod.zip
