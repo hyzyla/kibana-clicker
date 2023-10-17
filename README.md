@@ -23,7 +23,9 @@ Then load the extension in your browser (only once) by following this guide in P
 
 ### TODO:
 
-- [ ] Add support for OpenSearch
+- [x] Add support for OpenSearch
 - [ ] Add documentation about project structure
-- [ ] Add links on document page
-- [ ] Add LICENSE
+- [ ] Inject links on viewer change
+- [ ] Add links on single document page
+- [ ] Add links on table page
+- [x] Add LICENSE
