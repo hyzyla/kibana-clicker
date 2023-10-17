@@ -1,149 +1,219 @@
 import type { PlasmoCSConfig } from "plasmo";
 
+import { KibanaURL } from "~kibana-url";
+import { throttleDebounce } from "~lib";
+import * as logging from "~logging";
+
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   css: ["content.css"]
 };
 
-const KIBANA_CLICKER_INJECTED_ATTRIBUTE = "kibana-clicker-injected";
-const FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
-const KIBANA_HASH_G_TIME_REGEXP = /(?<time>time:\([^)]*\))/;
+class BaseDashboard {
+  FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
+  VIEWER_ROWS_SELECTOR = "table div[data-test-subj^='tableDocViewRow-']";
 
-let IS_KIBANA_DETECTED = false;
-let KIBANA_G_TIME = "";
+  viewer: Element | null;
 
-function getFieldName(element: Element): string | null {
-  const subjectAttr = element.getAttribute("data-test-subj") ?? "";
-  const search = subjectAttr.match(FIELD_NAME_REGEXP);
-  if (search === null || !search.groups) {
-    return null;
-  }
-  return search.groups.fieldName;
-}
-
-function getFieldValue(element: Element): string | null {
-  return element.textContent;
-}
-
-function createLink(name: string, value: string): Element {
-  const link = document.createElement("a");
-  const url = new URL("/app/discover#/", window.location.origin);
-
-  // Set query to filter by field value
-  const query = `(query:(language:kuery,query:'${name}:"${value}"'))`;
-  url.searchParams.set("_a", query);
-
-  // Set G time parameter
-  if (KIBANA_G_TIME) {
-    url.searchParams.append("_g", KIBANA_G_TIME);
+  constructor() {
+    this.viewer = null;
   }
 
-  link.setAttribute("href", url.toString());
-  link.setAttribute("target", "_blank");
-  link.setAttribute("rel", "noreferrer noopener");
-  link.classList.add("kibana-clicker-link");
-  link.textContent = value;
-  return link;
-}
-
-function handleKibanaDetected() {
-  console.log("KibanaClicker: Kibana is detected");
-  IS_KIBANA_DETECTED = true;
-}
-
-function handleDocumentViewer(viewer: Element, iteration = 0) {
-  if (iteration > 10) {
-    console.log("KibanaClicker: More than expected iterations");
-    return;
-  }
-  if (viewer.getAttribute(KIBANA_CLICKER_INJECTED_ATTRIBUTE) != null) {
-    return;
-  }
-  const rows = viewer.querySelectorAll(
-    "table div[data-test-subj^='tableDocViewRow-']"
-  );
-  if (rows.length === 0) {
-    setTimeout(() => handleDocumentViewer(viewer, iteration + 1), 1000);
-    return;
+  getFieldName(element: Element): string | null {
+    const subjectAttr = element.getAttribute("data-test-subj") ?? "";
+    const search = subjectAttr.match(this.FIELD_NAME_REGEXP);
+    if (search === null || !search.groups) {
+      return null;
+    }
+    return search.groups.fieldName;
   }
 
-  rows.forEach((row) => {
-    const fieldName = getFieldName(row);
-    if (!fieldName) {
+  getFieldValue(element: Element): string | null {
+    return element.textContent;
+  }
+
+  /**
+   * Create new link element with URL to Kibana with query by given field name and value
+   */
+  createLink(name: string, value: string): Element {
+    const link = document.createElement("a");
+
+    const kibanaURL = KibanaURL.fromCurrentURL();
+    const url = kibanaURL.withQuery(`${name}:"${value}"`);
+
+    link.setAttribute("href", url);
+    link.setAttribute("target", "_blank");
+    link.setAttribute("rel", "noreferrer noopener");
+    link.classList.add("kibana-clicker-link");
+    link.textContent = value;
+    return link;
+  }
+
+  onViewerDetected(viewer: Element, waitedMs: number = 0) {
+    // Viewer is already detected and links are already injected
+    if (this.viewer) return;
+
+    logging.log("Viewer is detected", viewer);
+
+    // We waited 10 seconds and rows are still not rendered, so we give up here
+    if (waitedMs > 10_000) {
+      logging.log("More than expected iterations", waitedMs);
       return;
     }
-    const fieldValue = getFieldValue(row);
-    if (!fieldValue) {
+
+    const rows = viewer.querySelectorAll(this.VIEWER_ROWS_SELECTOR);
+
+    // If rows are not rendered yet, wait 100ms and try again
+    if (rows.length === 0) {
+      setTimeout(() => this.onViewerDetected(viewer, waitedMs + 100), 100);
       return;
     }
-    const link = createLink(fieldName, fieldValue);
-    row.replaceChildren(link);
-  });
 
-  viewer.setAttribute(KIBANA_CLICKER_INJECTED_ATTRIBUTE, "1");
-}
+    logging.log("Injecting links...");
+    rows.forEach((row) => {
+      const fieldName = this.getFieldName(row);
+      if (!fieldName) {
+        return;
+      }
+      const fieldValue = this.getFieldValue(row);
+      if (!fieldValue) {
+        return;
+      }
+      const link = this.createLink(fieldName, fieldValue);
+      row.replaceChildren(link);
+    });
 
-function handleNewNode(node: Node) {
-  if (!(node instanceof Element)) {
-    return;
-  }
-
-  if (node.id === "kibana-body" || node.id === "opensearch-dashboards-body") {
-    return handleKibanaDetected();
-  }
-
-  if (!IS_KIBANA_DETECTED) {
-    return;
-  }
-
-  if (
-    node.attributes.getNamedItem("data-test-subj")?.value === "kbnDocViewer"
-  ) {
-    return handleDocumentViewer(node);
-  }
-
-  if (node.classList.contains("kbnDocViewer")) {
-    return handleDocumentViewer(node);
-  }
-
-  const viewer = node.querySelector(".kbnDocViewer");
-  if (viewer !== null) {
-    return handleDocumentViewer(viewer);
+    this.viewer = viewer;
   }
 }
 
-function getGTimeParam(hash: string): string {
-  const match = hash.match(KIBANA_HASH_G_TIME_REGEXP);
-  if (match && match.groups && match.groups.time) {
-    return `_g=(${match.groups.time})`;
+class KibanaDashaborad extends BaseDashboard {
+  constructor(readonly rootElement: Element) {
+    super();
   }
-  return "";
+
+  /**
+   * Check if given node can be a indicator of Kibana dashboard
+   */
+  static detect(): KibanaDashaborad | null {
+    const element = document.getElementById("kibana-body");
+    if (element === null) return null;
+    return new KibanaDashaborad(element);
+  }
+
+  detectViewer() {
+    const nodeWithAttr = document.querySelector(
+      '[data-test-subj="kbnDocViewer"]'
+    );
+    if (nodeWithAttr !== null) {
+      return this.onViewerDetected(nodeWithAttr);
+    }
+
+    const nodeWithClass = document.querySelector(".kbnDocViewer");
+    if (nodeWithClass !== null) {
+      return this.onViewerDetected(nodeWithClass);
+    }
+  }
 }
 
-// Watch changes in URL hash to update G time parameter
-window.addEventListener("hashchange", (event: HashChangeEvent) => {
-  if (!IS_KIBANA_DETECTED) return;
+class OpenSearchDashaborad extends BaseDashboard {
+  constructor(readonly rootElement: Element) {
+    super();
+  }
 
-  const newHash = event.newURL.split("#")[1];
-  if (!newHash) return;
+  static detect(): OpenSearchDashaborad | null {
+    const element = document.getElementById("opensearch-dashboards-body");
+    if (element === null) return null;
+    return new OpenSearchDashaborad(element);
+  }
 
-  KIBANA_G_TIME = getGTimeParam(newHash);
-});
+  detectViewer(): void {
+    // osdDocViewer
+    const nodeWithClass = document.querySelector(".osdDocViewer");
+    if (nodeWithClass !== null) {
+      return this.onViewerDetected(nodeWithClass);
+    }
+  }
+}
 
-// Watch changes in DOM to inject links
-const observer = new MutationObserver((mutations) => {
-  mutations.forEach((mutation) => {
-    if (!mutation.addedNodes) return;
+/**
+ * Class that detect Kibana or OpenSearch Dashboards
+ */
+class Detector {
+  dashboard: KibanaDashaborad | OpenSearchDashaborad | null = null;
+  state: "new" | "dashboard-detected" = "new";
 
-    mutation.addedNodes.forEach((node) => handleNewNode(node));
-  });
-});
+  constructor() {}
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-  attributes: false,
-  characterData: false
-});
+  /**
+   * Is Kibana or OpenSearch Dashboards is already detected
+   */
+  get isDetected(): boolean {
+    return this.dashboard !== null;
+  }
+
+  detectDashbaord(): void {
+    const dashboard =
+      KibanaDashaborad.detect() || OpenSearchDashaborad.detect();
+    if (dashboard) {
+      logging.log("Dashboard detected", dashboard);
+      this.dashboard = dashboard;
+      this.state = "dashboard-detected";
+    }
+  }
+
+  detectViewer() {
+    this.dashboard?.detectViewer();
+  }
+
+  /**
+   * Handle new DOM node
+   */
+  handleNewNode(): void {
+    switch (this.state) {
+      case "new":
+        this.detectDashbaord();
+        break;
+      case "dashboard-detected":
+        this.detectViewer();
+        break;
+    }
+  }
+
+  /**
+   * Funciton that handle new DOM node. It's called in batched mode not more than
+   * once per 100ms
+   */
+  handleNewNodeDebounced = throttleDebounce(this.handleNewNode, 100);
+
+  /**
+   * Start observing DOM changes to detect Kibana or OpenSearch Dashboards
+   */
+  watch() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (!mutation.addedNodes) return;
+
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof Element)) return;
+          this.handleNewNodeDebounced();
+        });
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+      characterData: false
+    });
+    logging.log("Mutation observer is started");
+  }
+}
+
+const detector = new Detector();
+detector.watch();
+
+logging.log("Content script is injected", detector);
 
 export {};
