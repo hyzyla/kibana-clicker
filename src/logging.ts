@@ -2,9 +2,9 @@ const prefix = "KibanaClicker";
 
 export function log(msg: string, ...args: any[]) {
   const message = `${prefix}: ${msg}`;
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.PLASMO_TAG === "prod") {
     console.debug(message, ...args);
-  } else {
+  } else if (process.env.PLASMO_TAG === "dev") {
     console.log(message, ...args);
   }
 }
