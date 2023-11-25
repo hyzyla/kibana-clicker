@@ -23,6 +23,7 @@ export class KibanaURL {
     this.hashPath = hashPath;
     this.hashParams = hashParams;
     this.hashParamsObj = this.parseHashParams(this.hashParams);
+    console.log("hashParamsObj", url, this.hashParamsObj);
   }
 
   /**
@@ -58,11 +59,18 @@ export class KibanaURL {
 
   private setHashParamsQuery(
     params: Record<string, any>,
-    query: string
+    options: {
+      name: string;
+      value: string;
+    }
   ): Record<string, any> {
     params["_a"] = params["_a"] ?? {};
     params["_a"]["query"] = params["_a"]["query"] ?? {};
-    params["_a"]["query"]["query"] = query;
+    params["_a"]["query"]["query"] = `${options.name}:"${options.value}"`;
+
+    params["_q"] = params["_q"] ?? {};
+    params["_q"]["query"] = params["_q"]["query"] ?? {};
+    params["_q"]["query"]["query"] = `${options.name}:"${options.value}"`;
     return params;
   }
 
@@ -79,12 +87,15 @@ export class KibanaURL {
    *
    * This method doesn't mutate object state
    */
-  withQuery(query: string): string {
+  withQuery(options: { name: string; value: string }): string {
     // To avoid mutation of previous hash params clone it
     const prevHashParams = structuredClone(this.hashParamsObj);
 
     // Set new query
-    const newHashParamsObj = this.setHashParamsQuery(prevHashParams, query);
+    const newHashParamsObj = this.setHashParamsQuery(prevHashParams, {
+      name: options.name,
+      value: options.value
+    });
 
     // Set build new hash params string and set it to previous URL
     const newHashParams = this.toHashParamsString(newHashParamsObj);

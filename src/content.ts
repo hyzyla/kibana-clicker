@@ -13,11 +13,7 @@ class BaseDashboard {
   FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
   VIEWER_ROWS_SELECTOR = "table div[data-test-subj^='tableDocViewRow-']";
 
-  viewer: Element | null;
-
-  constructor() {
-    this.viewer = null;
-  }
+  constructor() {}
 
   getFieldName(element: Element): string | null {
     const subjectAttr = element.getAttribute("data-test-subj") ?? "";
@@ -39,7 +35,7 @@ class BaseDashboard {
     const link = document.createElement("a");
 
     const kibanaURL = KibanaURL.fromCurrentURL();
-    const url = kibanaURL.withQuery(`${name}:"${value}"`);
+    const url = kibanaURL.withQuery({ name, value });
 
     link.setAttribute("href", url);
     link.setAttribute("target", "_blank");
@@ -50,8 +46,10 @@ class BaseDashboard {
   }
 
   onViewerDetected(viewer: Element, waitedMs: number = 0) {
-    // Viewer is already detected and links are already injected
-    if (this.viewer) return;
+    // Viewer is already detected and links are already injected, not need to do it again
+    if (viewer.attributes.getNamedItem("data-kibana-clicker-injected")) {
+      return;
+    }
 
     logging.log("Viewer is detected", viewer);
 
@@ -83,7 +81,7 @@ class BaseDashboard {
       row.replaceChildren(link);
     });
 
-    this.viewer = viewer;
+    viewer.setAttribute("data-kibana-clicker-injected", "true");
   }
 }
 
@@ -101,17 +99,20 @@ class KibanaDashaborad extends BaseDashboard {
     return new KibanaDashaborad(element);
   }
 
-  detectViewer() {
-    const nodeWithAttr = document.querySelector(
-      '[data-test-subj="kbnDocViewer"]'
+  detectViewers() {
+    // It can be multiple viewers on the page and we need to inject links to all of them
+    const nodeWithAttr = document.querySelectorAll(
+      '[data-test-subj="kbnDocViewer"]:not([data-kibana-clicker-injected])'
     );
-    if (nodeWithAttr !== null) {
-      return this.onViewerDetected(nodeWithAttr);
+    for (const node of nodeWithAttr) {
+      this.onViewerDetected(node);
     }
 
-    const nodeWithClass = document.querySelector(".kbnDocViewer");
-    if (nodeWithClass !== null) {
-      return this.onViewerDetected(nodeWithClass);
+    const nodeWithClass = document.querySelectorAll(
+      ".kbnDocViewer:not([data-kibana-clicker-injected])"
+    );
+    for (const node of nodeWithClass) {
+      return this.onViewerDetected(node);
     }
   }
 }
@@ -127,11 +128,13 @@ class OpenSearchDashaborad extends BaseDashboard {
     return new OpenSearchDashaborad(element);
   }
 
-  detectViewer(): void {
+  detectViewers(): void {
     // osdDocViewer
-    const nodeWithClass = document.querySelector(".osdDocViewer");
-    if (nodeWithClass !== null) {
-      return this.onViewerDetected(nodeWithClass);
+    const nodeWithClass = document.querySelectorAll(
+      ".osdDocViewer:not([data-kibana-clicker-injected])"
+    );
+    for (const node of nodeWithClass) {
+      return this.onViewerDetected(node);
     }
   }
 }
@@ -162,8 +165,8 @@ class Detector {
     }
   }
 
-  detectViewer() {
-    this.dashboard?.detectViewer();
+  detectViewers() {
+    this.dashboard?.detectViewers();
   }
 
   /**
@@ -175,7 +178,7 @@ class Detector {
         this.detectDashbaord();
         break;
       case "dashboard-detected":
-        this.detectViewer();
+        this.detectViewers();
         break;
     }
   }
