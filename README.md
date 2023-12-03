@@ -7,7 +7,12 @@ The extension creates links for quick filtering logs in Kibana.
 
 ![screenshot of extension](media/window-screenshoot.png)
 
-[Kibana demo site](https://demo.elastic.co/app/discover#/)
+<details>
+  <summary>Screen recording</summary>
+  ![screen recording](media/screen-recording.mp4)
+</details>
+
+🍎 [Kibana demo site](https://demo.elastic.co/app/discover#/)
 
 ### Run the extension in development mode
 
