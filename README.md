@@ -2,6 +2,9 @@
 
 The extension creates links for quick filtering logs in Kibana.
 
+- [Chrome](https://chrome.google.com/webstore/detail/kibana-clicker/jloofjcmeejindbohbhiidlokgobjpkn)
+- [Firefox](https://addons.mozilla.org/en-US/firefox/addon/kibana-clicker/)
+
 ![screenshot of extension](media/window-screenshoot.png)
 
 [Kibana demo site](https://demo.elastic.co/app/discover#/)
