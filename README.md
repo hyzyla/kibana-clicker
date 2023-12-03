@@ -9,8 +9,12 @@ The extension creates links for quick filtering logs in Kibana.
 
 <details>
   <summary>Screen recording</summary>
-  ![screen recording](media/screen-recording.mp4)
+  [![screen recording](media/screen-recording.mp4)](https://github.com/hyzyla/kibana-clicker/assets/7952949/e346f45e-5d94-4b08-9d74-3c2f7652b80d)
 </details>
+
+
+
+
 
 🍎 [Kibana demo site](https://demo.elastic.co/app/discover#/)
 
