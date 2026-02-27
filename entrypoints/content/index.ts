@@ -1,13 +1,8 @@
-import type { PlasmoCSConfig } from "plasmo";
+import { KibanaURL } from "@/utils/kibana-url";
+import { throttleDebounce } from "@/utils/lib";
+import * as logging from "@/utils/logging";
 
-import { KibanaURL } from "~kibana-url";
-import { throttleDebounce } from "~lib";
-import * as logging from "~logging";
-
-export const config: PlasmoCSConfig = {
-  matches: ["<all_urls>"],
-  css: ["content.css"]
-};
+import "./style.css";
 
 class BaseDashboard {
   FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
@@ -102,14 +97,14 @@ class KibanaDashaborad extends BaseDashboard {
   detectViewers() {
     // It can be multiple viewers on the page and we need to inject links to all of them
     const nodeWithAttr = document.querySelectorAll(
-      '[data-test-subj="kbnDocViewer"]:not([data-kibana-clicker-injected])'
+      '[data-test-subj="kbnDocViewer"]:not([data-kibana-clicker-injected])',
     );
     for (const node of nodeWithAttr) {
       this.onViewerDetected(node);
     }
 
     const nodeWithClass = document.querySelectorAll(
-      ".kbnDocViewer:not([data-kibana-clicker-injected])"
+      ".kbnDocViewer:not([data-kibana-clicker-injected])",
     );
     for (const node of nodeWithClass) {
       return this.onViewerDetected(node);
@@ -131,7 +126,7 @@ class OpenSearchDashaborad extends BaseDashboard {
   detectViewers(): void {
     // osdDocViewer
     const nodeWithClass = document.querySelectorAll(
-      ".osdDocViewer:not([data-kibana-clicker-injected])"
+      ".osdDocViewer:not([data-kibana-clicker-injected])",
     );
     for (const node of nodeWithClass) {
       return this.onViewerDetected(node);
@@ -156,8 +151,7 @@ class Detector {
   }
 
   detectDashbaord(): void {
-    const dashboard =
-      KibanaDashaborad.detect() || OpenSearchDashaborad.detect();
+    const dashboard = KibanaDashaborad.detect() || OpenSearchDashaborad.detect();
     if (dashboard) {
       logging.log("Dashboard detected", dashboard);
       this.dashboard = dashboard;
@@ -208,15 +202,19 @@ class Detector {
       childList: true,
       subtree: true,
       attributes: false,
-      characterData: false
+      characterData: false,
     });
     logging.log("Mutation observer is started");
   }
 }
 
-const detector = new Detector();
-detector.watch();
+export default defineContentScript({
+  matches: ["<all_urls>"],
 
-logging.log("Content script is injected", detector);
+  main() {
+    const detector = new Detector();
+    detector.watch();
 
-export {};
+    logging.log("Content script is injected", detector);
+  },
+});

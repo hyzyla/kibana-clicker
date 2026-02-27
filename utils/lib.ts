@@ -4,13 +4,13 @@
  * - if there are waiting and subsequent calls, just run function once after waiting
  * - if there are waiting and no subsequent calls, just do nothing
  */
-export function throttleDebounce(func: Function, wait: number) {
-  let timeout: any;
+export function throttleDebounce(func: (...args: unknown[]) => void, wait: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   let waitingCount = 0;
-  let lastArgs: any[];
-  let lastThis: any;
+  let lastArgs: unknown[];
+  let lastThis: unknown;
 
-  function wrapped(...args: any[]) {
+  function wrapped(this: unknown, ...args: unknown[]) {
     lastArgs = args;
     lastThis = this;
 
