@@ -1,5 +1,13 @@
 import rison from "rison";
 
+type RisonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | RisonValue[]
+  | { [key: string]: RisonValue };
+
 export class KibanaURL {
   private static last: {
     url: string;
@@ -11,7 +19,7 @@ export class KibanaURL {
   private hash: string;
   private hashPath: string;
   private hashParams: string | undefined;
-  private hashParamsObj: Record<string, any>;
+  private hashParamsObj: Record<string, RisonValue>;
 
   constructor(url: string) {
     this.rawUrl = url;
@@ -44,37 +52,37 @@ export class KibanaURL {
     return url;
   }
 
-  parseHashParams(hashParams: string | undefined): Record<string, any> {
+  parseHashParams(hashParams: string | undefined): Record<string, RisonValue> {
     if (hashParams === undefined) {
       return {};
     }
     const params = hashParams.split("&");
-    const result: Record<string, any> = {};
+    const result: Record<string, RisonValue> = {};
     params.forEach((param) => {
       const [key, value] = param.split("=", 2);
-      result[key] = rison.decode(value);
+      result[key] = rison.decode(value) as RisonValue;
     });
     return result;
   }
 
   private setHashParamsQuery(
-    params: Record<string, any>,
+    params: Record<string, RisonValue>,
     options: {
       name: string;
       value: string;
     }
-  ): Record<string, any> {
-    params["_a"] = params["_a"] ?? {};
-    params["_a"]["query"] = params["_a"]["query"] ?? {};
-    params["_a"]["query"]["query"] = `${options.name}:"${options.value}"`;
+  ): Record<string, RisonValue> {
+    const a = ((params["_a"] as Record<string, RisonValue>) ??= {});
+    const aQuery = ((a["query"] as Record<string, RisonValue>) ??= {});
+    aQuery["query"] = `${options.name}:"${options.value}"`;
 
-    params["_q"] = params["_q"] ?? {};
-    params["_q"]["query"] = params["_q"]["query"] ?? {};
-    params["_q"]["query"]["query"] = `${options.name}:"${options.value}"`;
+    const q = ((params["_q"] as Record<string, RisonValue>) ??= {});
+    const qQuery = ((q["query"] as Record<string, RisonValue>) ??= {});
+    qQuery["query"] = `${options.name}:"${options.value}"`;
     return params;
   }
 
-  toHashParamsString(hashParams: Record<string, any>): string {
+  toHashParamsString(hashParams: Record<string, RisonValue>): string {
     return Object.entries(hashParams)
       .map(([key, value]) => {
         return `${key}=${rison.encode(value)}`;

@@ -8,18 +8,12 @@ jobs:
   publish-chrome:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v3.4.1
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
-      - name: Cache npm modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          node-version: 22.x
+          cache: npm
       - name: Install dependencies
         run: npm ci
       - name: Build Chrome extension
@@ -30,22 +24,15 @@ jobs:
           keys: ${{ secrets.BPP_CHROME_KEYS }}
           chrome-file: build/chrome-mv3-prod.zip
 
-
   publish-firefox:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v3.4.1
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
-      - name: Cache npm modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
+          node-version: 22.x
+          cache: npm
       - name: Install dependencies
         run: npm ci
       - name: Build Firefox extension
