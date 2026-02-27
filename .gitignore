@@ -22,18 +22,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
-out/
-build/
-dist/
-
-# plasmo
-.plasmo
+# wxt
+.wxt
+.output
 
 # typescript
 .tsbuildinfo
-
-# Chrome OAuth2 key
-key.json
-
-# Plasmo publish keys
-keys.json

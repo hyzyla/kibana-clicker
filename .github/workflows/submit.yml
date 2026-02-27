@@ -16,13 +16,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build Chrome extension
+      - name: Build and zip Chrome extension
         run: npm run build:chrome
       - name: Chrome Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:
           keys: ${{ secrets.BPP_CHROME_KEYS }}
-          chrome-file: build/chrome-mv3-prod.zip
+          chrome-file: .output/*-chrome.zip
 
   publish-firefox:
     runs-on: ubuntu-latest
@@ -35,10 +35,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build Firefox extension
+      - name: Build and zip Firefox extension
         run: npm run build:firefox
       - name: Firefox Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:
           keys: ${{ secrets.BPP_FIREFOX_KEYS }}
-          firefox-file: build/firefox-mv2-prod.zip
+          firefox-file: .output/*-firefox.zip

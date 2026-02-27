@@ -1,13 +1,8 @@
-import type { PlasmoCSConfig } from "plasmo";
+import { KibanaURL } from "@/utils/kibana-url";
+import { throttleDebounce } from "@/utils/lib";
+import * as logging from "@/utils/logging";
 
-import { KibanaURL } from "~kibana-url";
-import { throttleDebounce } from "~lib";
-import * as logging from "~logging";
-
-export const config: PlasmoCSConfig = {
-  matches: ["<all_urls>"],
-  css: ["content.css"]
-};
+import "./style.css";
 
 class BaseDashboard {
   FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
@@ -214,9 +209,13 @@ class Detector {
   }
 }
 
-const detector = new Detector();
-detector.watch();
+export default defineContentScript({
+  matches: ["<all_urls>"],
 
-logging.log("Content script is injected", detector);
+  main() {
+    const detector = new Detector();
+    detector.watch();
 
-export {};
+    logging.log("Content script is injected", detector);
+  }
+});
