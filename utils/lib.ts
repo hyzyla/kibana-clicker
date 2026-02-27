@@ -4,10 +4,7 @@
  * - if there are waiting and subsequent calls, just run function once after waiting
  * - if there are waiting and no subsequent calls, just do nothing
  */
-export function throttleDebounce(
-  func: (...args: unknown[]) => void,
-  wait: number
-) {
+export function throttleDebounce(func: (...args: unknown[]) => void, wait: number) {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   let waitingCount = 0;
   let lastArgs: unknown[];
@@ -15,7 +12,6 @@ export function throttleDebounce(
 
   function wrapped(this: unknown, ...args: unknown[]) {
     lastArgs = args;
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     lastThis = this;
 
     if (timeout) {

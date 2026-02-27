@@ -1,12 +1,6 @@
 import rison from "rison";
 
-type RisonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | RisonValue[]
-  | { [key: string]: RisonValue };
+type RisonValue = string | number | boolean | null | RisonValue[] | { [key: string]: RisonValue };
 
 export class KibanaURL {
   private static last: {
@@ -47,7 +41,7 @@ export class KibanaURL {
     const url = new KibanaURL(window.location.href);
     this.last = {
       url: currentUrl,
-      instance: url
+      instance: url,
     };
     return url;
   }
@@ -70,7 +64,7 @@ export class KibanaURL {
     options: {
       name: string;
       value: string;
-    }
+    },
   ): Record<string, RisonValue> {
     const a = ((params["_a"] as Record<string, RisonValue>) ??= {});
     const aQuery = ((a["query"] as Record<string, RisonValue>) ??= {});
@@ -102,7 +96,7 @@ export class KibanaURL {
     // Set new query
     const newHashParamsObj = this.setHashParamsQuery(prevHashParams, {
       name: options.name,
-      value: options.value
+      value: options.value,
     });
 
     // Set build new hash params string and set it to previous URL

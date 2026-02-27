@@ -6,8 +6,8 @@ export default defineConfig({
     description: "Automation tool for Kibana",
     browser_specific_settings: {
       gecko: {
-        id: "kibana-clicker@hyzyla.dev"
-      }
-    }
-  }
+        id: "kibana-clicker@hyzyla.dev",
+      },
+    },
+  },
 });
