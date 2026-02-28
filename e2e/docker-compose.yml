@@ -1,0 +1,85 @@
+services:
+  # ── Kibana v8 ──────────────────────────────────────────────
+  elasticsearch-v8:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    profiles: [v8]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "19200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  kibana-v8:
+    image: docker.elastic.co/kibana/kibana:8.17.0
+    profiles: [v8]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch-v8:9200
+      - xpack.security.enabled=false
+    ports:
+      - "15601:5601"
+    depends_on:
+      elasticsearch-v8:
+        condition: service_healthy
+
+  # ── Kibana v9 ──────────────────────────────────────────────
+  elasticsearch-v9:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    profiles: [v9]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "29200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  kibana-v9:
+    image: docker.elastic.co/kibana/kibana:9.0.0
+    profiles: [v9]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch-v9:9200
+      - xpack.security.enabled=false
+    ports:
+      - "25601:5601"
+    depends_on:
+      elasticsearch-v9:
+        condition: service_healthy
+
+  # ── OpenSearch ─────────────────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    profiles: [opensearch]
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=MyS3cur3!Pass
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "39200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.0
+    profiles: [opensearch]
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "35601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy

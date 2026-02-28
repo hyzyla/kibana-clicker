@@ -6,7 +6,7 @@ import "./style.css";
 
 class BaseDashboard {
   FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
-  VIEWER_ROWS_SELECTOR = "table div[data-test-subj^='tableDocViewRow-']";
+  VIEWER_ROWS_SELECTOR = "[data-test-subj^='tableDocViewRow-'][data-test-subj$='-value']";
 
   constructor() {}
 

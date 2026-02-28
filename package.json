@@ -15,12 +15,21 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test:e2e": "playwright test --config e2e/playwright.config.ts",
+    "test:e2e:v8": "playwright test --config e2e/playwright.config.ts kibana-v8.spec.ts",
+    "test:e2e:v9": "playwright test --config e2e/playwright.config.ts kibana-v9.spec.ts",
+    "test:e2e:opensearch": "playwright test --config e2e/playwright.config.ts opensearch.spec.ts",
+    "docker:v8": "docker compose -f e2e/docker-compose.yml --profile v8 up -d",
+    "docker:v9": "docker compose -f e2e/docker-compose.yml --profile v9 up -d",
+    "docker:opensearch": "docker compose -f e2e/docker-compose.yml --profile opensearch up -d",
+    "seed": "bash e2e/seed-data.sh"
   },
   "dependencies": {
     "rison": "^0.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/rison": "0.1.0",
     "oxfmt": "0.35.0",
     "oxlint": "1.50.0",
