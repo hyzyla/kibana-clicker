@@ -3,42 +3,23 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
-  publish-chrome:
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
         with:
           node-version: 22.x
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Build and zip Chrome extension
-        run: npm run build:chrome
-      - name: Chrome Platform Publish
-        uses: PlasmoHQ/bpp@v3
-        with:
-          keys: ${{ secrets.BPP_CHROME_KEYS }}
-          chrome-file: .output/*-chrome.zip
-
-  publish-firefox:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Build and zip Firefox extension
-        run: npm run build:firefox
-      - name: Firefox Platform Publish
-        uses: PlasmoHQ/bpp@v3
-        with:
-          keys: ${{ secrets.BPP_FIREFOX_KEYS }}
-          firefox-file: .output/*-firefox.zip
+      - run: npm ci
+      - run: |
+          npx wxt zip --browser chrome
+          npx wxt zip --browser firefox
+      - name: Publish
+        run: |
+          npx wxt submit --dry-run \
+            --chrome-zip .output/*-chrome.zip \
+            --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
