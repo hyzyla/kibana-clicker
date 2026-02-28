@@ -1,7 +1,7 @@
 {
   "name": "kibana-clicker",
   "displayName": "Kibana Clicker",
-  "version": "100.0.7",
+  "version": "100.0.8",
   "description": "Automation tool for Kibana",
   "homepage": "https://github.com/hyzyla/kibana-clicker",
   "author": "Yevhenii Hyzyla <hyzyla@gmail.com>",
