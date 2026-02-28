@@ -8,7 +8,6 @@ import {
   preserveFiltersItem,
   preserveDateRangeItem,
   preserveColumnsItem,
-  injectTableLinksItem,
 } from "@/utils/settings";
 
 import "./style.css";
@@ -43,6 +42,17 @@ function createLink(name: string, value: string, settings: Settings): Element {
   link.classList.add("kibana-clicker-link");
   link.textContent = value;
   return link;
+}
+
+/**
+ * Remove all injected links and replace them with plain text nodes.
+ */
+function removeAllLinks() {
+  const links = document.querySelectorAll(".kibana-clicker-link");
+  for (const link of links) {
+    const text = document.createTextNode(link.textContent ?? "");
+    link.parentElement?.replaceChild(text, link);
+  }
 }
 
 /**
@@ -85,39 +95,6 @@ function injectIntoViewer(viewer: Element, settings: Settings, waitedMs: number 
   injectViewerLinks(viewer, settings);
 }
 
-/**
- * Inject links into the Discover table's description list cells.
- * The _source column renders field/value pairs as <dt>/<dd> inside a <dl>.
- * We wrap the text inside each <dd> with a link, preserving the <dd> element
- * so React's reconciliation is not disrupted.
- */
-function injectGridLinks(settings: Settings) {
-  const lists = document.querySelectorAll(
-    '[data-test-subj="discoverCellDescriptionList"]',
-  );
-
-  for (const list of lists) {
-    const items = list.querySelectorAll("dt, dd");
-    for (let i = 0; i < items.length - 1; i += 2) {
-      const dt = items[i];
-      const dd = items[i + 1];
-
-      if (dt.tagName !== "DT" || dd.tagName !== "DD") continue;
-      if (dd.querySelector(".kibana-clicker-link")) continue;
-
-      const fieldName = dt.textContent?.trim();
-      const fieldValue = dd.textContent?.trim();
-      if (!fieldName || !fieldValue || fieldValue === "-") continue;
-
-      const textNode = dd.firstChild;
-      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue;
-
-      const link = createLink(fieldName, fieldValue, settings);
-      dd.replaceChild(link, textNode);
-    }
-  }
-}
-
 const KIBANA_VIEWER_SELECTORS = [
   '[data-test-subj="kbnDocViewer"]',
   ".kbnDocViewer",
@@ -156,11 +133,6 @@ class KibanaDashboard {
 
     // Also scan entire document for rows outside viewers (single doc page)
     injectViewerLinks(document, settings);
-
-    // Inject into Discover table description list cells
-    if (settings.injectTableLinks) {
-      injectGridLinks(settings);
-    }
   }
 }
 
@@ -190,9 +162,6 @@ class OpenSearchDashboard {
     }
 
     injectViewerLinks(document, settings);
-    if (settings.injectTableLinks) {
-      injectGridLinks(settings);
-    }
   }
 }
 
@@ -219,6 +188,11 @@ class Detector {
 
   injectLinks() {
     this.dashboard?.injectLinks(this.settings);
+  }
+
+  reinjectLinks() {
+    removeAllLinks();
+    this.injectLinks();
   }
 
   handleMutation(): void {
@@ -265,11 +239,10 @@ export default defineContentScript({
     // Load initial settings
     detector.settings = await loadSettings();
 
-    // Watch for settings changes
-    preserveFiltersItem.watch((v) => { detector.settings.preserveFilters = v; });
-    preserveDateRangeItem.watch((v) => { detector.settings.preserveDateRange = v; });
-    preserveColumnsItem.watch((v) => { detector.settings.preserveColumns = v; });
-    injectTableLinksItem.watch((v) => { detector.settings.injectTableLinks = v; });
+    // Watch for settings changes and reinject links
+    preserveFiltersItem.watch((v) => { detector.settings.preserveFilters = v; detector.reinjectLinks(); });
+    preserveDateRangeItem.watch((v) => { detector.settings.preserveDateRange = v; detector.reinjectLinks(); });
+    preserveColumnsItem.watch((v) => { detector.settings.preserveColumns = v; detector.reinjectLinks(); });
 
     detector.watch();
 

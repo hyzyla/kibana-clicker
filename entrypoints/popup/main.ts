@@ -2,7 +2,6 @@ import {
   preserveFiltersItem,
   preserveDateRangeItem,
   preserveColumnsItem,
-  injectTableLinksItem,
 } from "@/utils/settings";
 import type { WxtStorageItem } from "wxt/utils/storage";
 
@@ -10,7 +9,6 @@ const items: Record<string, WxtStorageItem<boolean, {}>> = {
   preserveFilters: preserveFiltersItem,
   preserveDateRange: preserveDateRangeItem,
   preserveColumns: preserveColumnsItem,
-  injectTableLinks: injectTableLinksItem,
 };
 
 async function init() {

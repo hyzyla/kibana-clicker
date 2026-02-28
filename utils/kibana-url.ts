@@ -25,7 +25,6 @@ export class KibanaURL {
     this.hashPath = hashPath;
     this.hashParams = hashParams;
     this.hashParamsObj = this.parseHashParams(this.hashParams);
-    console.log("hashParamsObj", url, this.hashParamsObj);
   }
 
   /**
@@ -76,6 +75,10 @@ export class KibanaURL {
     return params;
   }
 
+  private isDocPage(): boolean {
+    return this.hashPath.startsWith("#/doc/");
+  }
+
   toHashParamsString(hashParams: Record<string, RisonValue>): string {
     return Object.entries(hashParams)
       .map(([key, value]) => {
@@ -97,7 +100,17 @@ export class KibanaURL {
     preserveColumns?: boolean;
   }): string {
     // To avoid mutation of previous hash params clone it
-    const prevHashParams = structuredClone(this.hashParamsObj);
+    let prevHashParams = structuredClone(this.hashParamsObj);
+
+    // On single document page, strip doc-specific params (e.g. "id")
+    // and only keep Discover-relevant params
+    if (this.isDocPage()) {
+      const clean: Record<string, RisonValue> = {};
+      for (const key of ["_a", "_g", "_q"]) {
+        if (key in prevHashParams) clean[key] = prevHashParams[key];
+      }
+      prevHashParams = clean;
+    }
 
     // Set new query
     const newHashParamsObj = this.setHashParamsQuery(prevHashParams, {
@@ -122,7 +135,7 @@ export class KibanaURL {
     const newHashParams = this.toHashParamsString(newHashParamsObj);
 
     // On single document page (#/doc/...), redirect to Discover page
-    const hashPath = this.hashPath.startsWith("#/doc/") ? "#/" : this.hashPath;
+    const hashPath = this.isDocPage() ? "#/" : this.hashPath;
     const newHash = `${hashPath}?${newHashParams}`;
 
     const url = new URL(this.rawUrl);

@@ -20,15 +20,15 @@ test.describe("Settings", () => {
     await resetSettings(context, extensionId);
   });
 
-  test("popup displays all 4 toggles with correct defaults", async ({
+  test("popup displays all 3 toggles with correct defaults", async ({
     context,
     extensionId,
   }) => {
     const popup = await openPopup(context, extensionId);
 
-    // Check all 4 settings exist
+    // Check all 3 settings exist
     const settings = popup.locator("[data-setting]");
-    await expect(settings).toHaveCount(4);
+    await expect(settings).toHaveCount(3);
 
     // Check defaults
     const preserveFilters = popup.locator('[data-setting="preserveFilters"] input');
@@ -39,9 +39,6 @@ test.describe("Settings", () => {
 
     const preserveColumns = popup.locator('[data-setting="preserveColumns"] input');
     await expect(preserveColumns).toBeChecked();
-
-    const injectTableLinks = popup.locator('[data-setting="injectTableLinks"] input');
-    await expect(injectTableLinks).not.toBeChecked();
 
     await popup.close();
   });
@@ -63,48 +60,6 @@ test.describe("Settings", () => {
     const checkbox2 = popup2.locator('[data-setting="preserveFilters"] input');
     await expect(checkbox2).toBeChecked();
     await popup2.close();
-  });
-
-  test("injectTableLinks=false (default) does not inject links in table cells", async ({
-    context,
-    extensionId,
-    extensionPage: page,
-  }) => {
-    await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
-
-    // Wait for table to render
-    await page.waitForTimeout(3000);
-
-    // With default settings (injectTableLinks=false), table cells should NOT have links
-    const tableLinkCount = await page
-      .locator('[data-test-subj="discoverCellDescriptionList"] .kibana-clicker-link')
-      .count();
-    expect(tableLinkCount).toBe(0);
-  });
-
-  test("injectTableLinks=true injects links in table cells", async ({
-    context,
-    extensionId,
-    extensionPage: page,
-  }) => {
-    // Enable injectTableLinks
-    const popup = await openPopup(context, extensionId);
-    const checkbox = popup.locator('[data-setting="injectTableLinks"] input');
-    await checkbox.click();
-    await expect(checkbox).toBeChecked();
-    await popup.close();
-
-    await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
-
-    // Wait for table to render and content script to process
-    await page.waitForTimeout(5000);
-
-    const tableLinkCount = await page
-      .locator('[data-test-subj="discoverCellDescriptionList"] .kibana-clicker-link')
-      .count();
-    expect(tableLinkCount).toBeGreaterThan(0);
   });
 
   test("preserveDateRange=false omits _g from link href", async ({
