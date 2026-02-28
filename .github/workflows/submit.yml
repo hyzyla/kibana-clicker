@@ -20,7 +20,7 @@ jobs:
           npx wxt zip --browser firefox
       - name: Submit
         run: |
-          npm wxt submit --dry-run \
+          npx wxt submit --dry-run \
             --chrome-zip .output/*-chrome.zip \
             --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
         env:
