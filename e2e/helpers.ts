@@ -1,114 +1,34 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
+/** Selector for the first table row expand button (works across Kibana versions) */
+const EXPAND_BUTTON_SELECTOR = [
+  'button[aria-label="Toggle row details"]',
+  'button[aria-label="Expand"]',
+  'button[data-test-subj="docTableExpandToggleColumn"]',
+].join(", ");
+
 /**
- * Navigate to Kibana/OSD Discover page and wait for it to load.
- * Sets time range to "Last 24 hours" to ensure seeded data is visible.
+ * Navigate to Kibana/OSD Discover page with the time range pre-set in the URL.
+ *
+ * The `_g` hash param (global state) carries the time range so no UI clicks are
+ * needed. Onboarding dialogs are dismissed automatically before returning.
  */
 export async function navigateToDiscover(page: Page, baseUrl: string) {
-  await page.goto(`${baseUrl}/app/discover`, {
+  // _g rison-encodes the global state (time range + refresh interval).
+  // Putting it in the URL avoids clicking through the date picker.
+  await page.goto(`${baseUrl}/app/discover#/?_g=(time:(from:now-24h,to:now))`, {
     waitUntil: "domcontentloaded",
     timeout: 60_000,
   });
-  // Wait for Kibana app to render
-  await page.waitForTimeout(5000);
 
-  // Widen time range to "Last 24 hours" so seeded data is always visible
-  await setTimeRangeLast24Hours(page);
-  await page.waitForTimeout(3000);
-}
+  // Dismiss any onboarding/tour dialogs before the test interacts with results
+  await dismissDialogs(page);
 
-/**
- * Set the time range to "Last 24 hours" via the date picker.
- */
-async function setTimeRangeLast24Hours(page: Page) {
-  // Click the date picker button to open the time range popover
-  const datePickerBtn = page.locator(
-    '[data-test-subj="superDatePickerToggleQuickMenuButton"], button[data-test-subj="superDatePickerShowDatesButton"]',
-  );
-  if (await datePickerBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-    await datePickerBtn.first().click();
-    await page.waitForTimeout(1000);
-
-    // Look for "Last 24 hours" in the quick select options
-    const last24h = page.locator('button:has-text("Last 24 hours")');
-    if (await last24h.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await last24h.click();
-      await page.waitForTimeout(2000);
-      return;
-    }
-  }
-
-  // Fallback: click the time range text and change it via the quick select
-  const timeRangeBtn = page.locator(
-    'button:has-text("Last 15 minutes"), button:has-text("Last")',
-  ).first();
-  if (await timeRangeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await timeRangeBtn.click();
-    await page.waitForTimeout(1000);
-
-    const last24h = page.locator('button:has-text("Last 24 hours")');
-    if (await last24h.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await last24h.click();
-      await page.waitForTimeout(2000);
-    }
-  }
-}
-
-/**
- * Create a data view (index pattern) for the test-logs index via the Kibana API.
- * This is more reliable than clicking through the UI.
- */
-export async function createDataViewViaAPI(
-  baseUrl: string,
-  indexPattern: string,
-) {
-  // Try Kibana v8/v9 API
-  try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "kbn-xsrf": "reporting",
-    };
-    const response = await fetch(`${baseUrl}/api/data_views/data_view`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        data_view: {
-          title: indexPattern,
-          timeFieldName: "@timestamp",
-        },
-      }),
-    });
-    if (response.ok || response.status === 409) return;
-  } catch {
-    // Kibana API not available, try OpenSearch
-  }
-
-  // Try OpenSearch Dashboards API
-  try {
-    const response = await fetch(
-      `${baseUrl}/api/saved_objects/index-pattern/test-logs`,
-      {
-        method: "POST",
-        headers: new Headers({
-          "Content-Type": "application/json",
-          "osd-xsrf": "true",
-        }),
-        body: JSON.stringify({
-          attributes: {
-            title: indexPattern,
-            timeFieldName: "@timestamp",
-          },
-        }),
-      },
-    );
-    if (!response.ok && response.status !== 409) {
-      console.warn(
-        `Failed to create data view: ${response.status} ${await response.text()}`,
-      );
-    }
-  } catch {
-    // OpenSearch API not available either
-  }
+  // Wait until at least one result row is visible
+  await page
+    .locator(EXPAND_BUTTON_SELECTOR)
+    .first()
+    .waitFor({ state: "visible", timeout: 30_000 });
 }
 
 /**
@@ -132,7 +52,7 @@ export async function dismissDialogs(page: Page) {
     const el = page.locator(selector).first();
     if (await el.isVisible({ timeout: 500 }).catch(() => false)) {
       await el.click().catch(() => {});
-      await page.waitForTimeout(300);
+      await el.waitFor({ state: "hidden", timeout: 2000 }).catch(() => {});
     }
   }
 }
@@ -141,35 +61,78 @@ export async function dismissDialogs(page: Page) {
  * Open the document viewer flyout by clicking the expand toggle on the first row.
  */
 export async function openDocViewer(page: Page) {
-  // Wait for discover results to load
-  await page.waitForTimeout(3000);
+  const btn = page.locator(EXPAND_BUTTON_SELECTOR).first();
+  await btn.waitFor({ state: "visible", timeout: 30_000 });
+  await btn.click();
 
-  // Try the expand/toggle button on first row
-  const expandSelectors = [
-    'button[aria-label="Toggle row details"]',
-    'button[aria-label="Expand"]',
-    'button[data-test-subj="docTableExpandToggleColumn"]',
-  ];
-
-  for (const selector of expandSelectors) {
-    const btn = page.locator(selector).first();
-    if (await btn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await btn.click();
-      await page.waitForTimeout(5000);
-      return;
-    }
-  }
-
-  throw new Error("Could not find expand button to open doc viewer");
+  // Wait for the doc viewer panel to render
+  await page
+    .locator('[data-test-subj="kbnDocViewer"], .kbnDocViewer, .osdDocViewer')
+    .first()
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .catch(() => {});
 }
 
 /**
  * Count the number of kibana-clicker-link elements injected into the page.
  */
 export async function countClickerLinks(page: Page) {
-  // Wait for the content script's MutationObserver to detect and process the doc viewer
-  await page.waitForTimeout(5000);
+  await page
+    .locator(".kibana-clicker-link")
+    .first()
+    .waitFor({ state: "visible", timeout: 10_000 });
   return await page.locator(".kibana-clicker-link").count();
+}
+
+/**
+ * Click a clicker link and return the new Discover page it opens.
+ * Waits for the new tab to load and Kibana's query bar to become visible.
+ * Returns { newPage, fieldName, fieldValue } for assertions.
+ */
+export async function clickLinkAndWaitForNewPage(
+  context: BrowserContext,
+  page: Page,
+) {
+  const link = page.locator(".kibana-clicker-link").first();
+  await link.waitFor({ state: "visible", timeout: 10_000 });
+
+  // Extract field name from parent row: data-test-subj="tableDocViewRow-<name>-value"
+  const row = link.locator("xpath=..");
+  const testSubj = await row.getAttribute("data-test-subj");
+  const fieldName = testSubj?.match(/^tableDocViewRow-(.+)-value$/)?.[1] ?? null;
+
+  const fieldValue = await link.textContent() ?? "";
+
+  // Click the link (target="_blank") and capture the new tab
+  const [newPage] = await Promise.all([
+    context.waitForEvent("page"),
+    link.click(),
+  ]);
+  await newPage.waitForLoadState("domcontentloaded");
+
+  // Dismiss onboarding dialogs on the new page too
+  await dismissDialogs(newPage);
+
+  // Wait for Kibana to finish loading (query bar becomes visible)
+  await newPage
+    .locator('[data-test-subj="queryInput"]')
+    .waitFor({ state: "visible", timeout: 30_000 });
+
+  return { newPage, fieldName, fieldValue };
+}
+
+/**
+ * Read the KQL query text from Kibana's query bar.
+ * Handles both textarea (older Kibana) and contenteditable (newer) query inputs.
+ */
+export async function getQueryBarText(page: Page): Promise<string> {
+  const queryInput = page.locator('[data-test-subj="queryInput"]');
+  return await queryInput.evaluate((el) => {
+    if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+      return el.value;
+    }
+    return el.textContent ?? "";
+  });
 }
 
 /**

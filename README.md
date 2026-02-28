@@ -33,7 +33,7 @@ Then load the extension in your browser (only once) by following this guide in P
 
 - [x] Add support for OpenSearch
 - [ ] Add documentation about project structure
-- [ ] Inject links on viewer change
-- [ ] Add links on single document page
+- [x] Inject links on viewer change
+- [x] Add links on single document page
 - [ ] Add links on table page
 - [x] Add LICENSE

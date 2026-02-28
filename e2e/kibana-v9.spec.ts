@@ -1,25 +1,13 @@
 import { test, expect } from "./fixtures";
-import {
-  countClickerLinks,
-  createDataViewViaAPI,
-  dismissDialogs,
-  navigateToDiscover,
-  openDocViewer,
-} from "./helpers";
+import { countClickerLinks, navigateToDiscover, openDocViewer } from "./helpers";
 
 const BASE_URL = "http://localhost:25601";
 
 test.describe("Kibana v9", () => {
-  test.beforeAll(async () => {
-    await createDataViewViaAPI(BASE_URL, "test-logs*");
-  });
-
   test("should inject clicker links into doc viewer", async ({
     extensionPage: page,
   }) => {
     await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
-
     await openDocViewer(page);
 
     const linkCount = await countClickerLinks(page);
@@ -30,8 +18,6 @@ test.describe("Kibana v9", () => {
     extensionPage: page,
   }) => {
     await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
-
     await openDocViewer(page);
 
     const link = page.locator(".kibana-clicker-link").first();

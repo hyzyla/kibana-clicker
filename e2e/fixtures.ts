@@ -5,6 +5,9 @@ import os from "node:os";
 
 const extensionPath = path.resolve(__dirname, "..", ".output", "chrome-mv3");
 
+
+const HEADED = process.env.KIBANA_CLICKER_E2E_HEADED === "true";
+
 /**
  * Custom test fixture that launches Chromium with a persistent context
  * so that the browser extension is loaded properly.
@@ -20,7 +23,7 @@ export const test = base.extend<{
     const context = await chromium.launchPersistentContext(userDataDir, {
       headless: false,
       args: [
-        "--headless=new",
+        ...(HEADED ? [] : [`--headless=new`]),
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
         "--no-sandbox",

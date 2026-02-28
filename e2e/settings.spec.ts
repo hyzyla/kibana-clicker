@@ -1,34 +1,22 @@
 import { test, expect } from "./fixtures";
-import {
-  countClickerLinks,
-  createDataViewViaAPI,
-  dismissDialogs,
-  navigateToDiscover,
-  openDocViewer,
-  openPopup,
-  resetSettings,
-} from "./helpers";
+import { navigateToDiscover, openDocViewer, openPopup, resetSettings } from "./helpers";
 
 const BASE_URL = "http://localhost:15601";
 
 test.describe("Settings", () => {
-  test.beforeAll(async () => {
-    await createDataViewViaAPI(BASE_URL, "test-logs*");
-  });
-
   test.beforeEach(async ({ context, extensionId }) => {
     await resetSettings(context, extensionId);
   });
 
-  test("popup displays all 3 toggles with correct defaults", async ({
+  test("popup displays all 4 toggles with correct defaults", async ({
     context,
     extensionId,
   }) => {
     const popup = await openPopup(context, extensionId);
 
-    // Check all 3 settings exist
+    // Check all 4 settings exist
     const settings = popup.locator("[data-setting]");
-    await expect(settings).toHaveCount(3);
+    await expect(settings).toHaveCount(4);
 
     // Check defaults
     const preserveFilters = popup.locator('[data-setting="preserveFilters"] input');
@@ -39,6 +27,9 @@ test.describe("Settings", () => {
 
     const preserveColumns = popup.locator('[data-setting="preserveColumns"] input');
     await expect(preserveColumns).toBeChecked();
+
+    const preserveQuery = popup.locator('[data-setting="preserveQuery"] input');
+    await expect(preserveQuery).not.toBeChecked();
 
     await popup.close();
   });
@@ -76,7 +67,6 @@ test.describe("Settings", () => {
     await popup.close();
 
     await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
     await openDocViewer(page);
 
     const link = page.locator(".kibana-clicker-link").first();
@@ -92,7 +82,6 @@ test.describe("Settings", () => {
     extensionId,
     extensionPage: page,
   }) => {
-    // Enable preserveFilters
     const popup = await openPopup(context, extensionId);
     const checkbox = popup.locator('[data-setting="preserveFilters"] input');
     await checkbox.click();
@@ -100,17 +89,13 @@ test.describe("Settings", () => {
     await popup.close();
 
     await navigateToDiscover(page, BASE_URL);
-    await dismissDialogs(page);
     await openDocViewer(page);
 
-    // Click a link to set a filter query, then check that filters key is preserved
     const link = page.locator(".kibana-clicker-link").first();
     await expect(link).toBeVisible({ timeout: 10_000 });
 
     const href = await link.getAttribute("href");
     expect(href).toBeTruthy();
-    // With preserveFilters=true, the _a param should retain a filters key
-    // (or at least not have it stripped). The key test is that filters are not deleted.
     expect(href).toContain("_a=");
   });
 });
