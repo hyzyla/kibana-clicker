@@ -1,6 +1,15 @@
 import { KibanaURL } from "@/utils/kibana-url";
 import { throttleDebounce } from "@/utils/lib";
 import * as logging from "@/utils/logging";
+import {
+  type Settings,
+  DEFAULT_SETTINGS,
+  loadSettings,
+  preserveFiltersItem,
+  preserveDateRangeItem,
+  preserveColumnsItem,
+  injectTableLinksItem,
+} from "@/utils/settings";
 
 import "./style.css";
 
@@ -16,11 +25,17 @@ function getViewerRowFieldName(element: Element): string | null {
   return search.groups.fieldName;
 }
 
-function createLink(name: string, value: string): Element {
+function createLink(name: string, value: string, settings: Settings): Element {
   const link = document.createElement("a");
 
   const kibanaURL = KibanaURL.fromCurrentURL();
-  const url = kibanaURL.withQuery({ name, value });
+  const url = kibanaURL.withQuery({
+    name,
+    value,
+    preserveFilters: settings.preserveFilters,
+    preserveDateRange: settings.preserveDateRange,
+    preserveColumns: settings.preserveColumns,
+  });
 
   link.setAttribute("href", url);
   link.setAttribute("target", "_blank");
@@ -34,7 +49,7 @@ function createLink(name: string, value: string): Element {
  * Inject links into doc viewer rows within the given element.
  * Only processes rows that don't already have a link (idempotent).
  */
-function injectViewerLinks(root: Element | Document) {
+function injectViewerLinks(root: Element | Document, settings: Settings) {
   const rows = root.querySelectorAll(VIEWER_ROWS_SELECTOR);
   for (const row of rows) {
     if (row.querySelector(".kibana-clicker-link")) continue;
@@ -45,7 +60,7 @@ function injectViewerLinks(root: Element | Document) {
     const fieldValue = row.textContent;
     if (!fieldValue) continue;
 
-    const link = createLink(fieldName, fieldValue);
+    const link = createLink(fieldName, fieldValue, settings);
     row.replaceChildren(link);
   }
 }
@@ -54,7 +69,7 @@ function injectViewerLinks(root: Element | Document) {
  * Try to inject links into a viewer element. If rows aren't rendered yet,
  * poll until they appear (up to 10 seconds).
  */
-function injectIntoViewer(viewer: Element, waitedMs: number = 0) {
+function injectIntoViewer(viewer: Element, settings: Settings, waitedMs: number = 0) {
   if (waitedMs > 10_000) {
     logging.log("Viewer polling timed out", waitedMs);
     return;
@@ -63,11 +78,11 @@ function injectIntoViewer(viewer: Element, waitedMs: number = 0) {
   const rows = viewer.querySelectorAll(VIEWER_ROWS_SELECTOR);
 
   if (rows.length === 0) {
-    setTimeout(() => injectIntoViewer(viewer, waitedMs + 100), 100);
+    setTimeout(() => injectIntoViewer(viewer, settings, waitedMs + 100), 100);
     return;
   }
 
-  injectViewerLinks(viewer);
+  injectViewerLinks(viewer, settings);
 }
 
 /**
@@ -76,7 +91,7 @@ function injectIntoViewer(viewer: Element, waitedMs: number = 0) {
  * We wrap the text inside each <dd> with a link, preserving the <dd> element
  * so React's reconciliation is not disrupted.
  */
-function injectGridLinks() {
+function injectGridLinks(settings: Settings) {
   const lists = document.querySelectorAll(
     '[data-test-subj="discoverCellDescriptionList"]',
   );
@@ -97,7 +112,7 @@ function injectGridLinks() {
       const textNode = dd.firstChild;
       if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue;
 
-      const link = createLink(fieldName, fieldValue);
+      const link = createLink(fieldName, fieldValue, settings);
       dd.replaceChild(link, textNode);
     }
   }
@@ -121,7 +136,7 @@ class KibanaDashboard {
     return new KibanaDashboard(element);
   }
 
-  injectLinks() {
+  injectLinks(settings: Settings) {
     // Detect viewer containers and poll for rows within them.
     // Search entire document because Kibana renders flyouts as portals
     // outside the main app container.
@@ -131,19 +146,21 @@ class KibanaDashboard {
         if (!this.knownViewers.has(viewer)) {
           this.knownViewers.add(viewer);
           logging.log("Viewer detected", viewer);
-          injectIntoViewer(viewer);
+          injectIntoViewer(viewer, settings);
         } else {
           // Re-inject into known viewers (handles pagination/content changes)
-          injectViewerLinks(viewer);
+          injectViewerLinks(viewer, settings);
         }
       }
     }
 
     // Also scan entire document for rows outside viewers (single doc page)
-    injectViewerLinks(document);
+    injectViewerLinks(document, settings);
 
     // Inject into Discover table description list cells
-    injectGridLinks();
+    if (settings.injectTableLinks) {
+      injectGridLinks(settings);
+    }
   }
 }
 
@@ -158,22 +175,24 @@ class OpenSearchDashboard {
     return new OpenSearchDashboard(element);
   }
 
-  injectLinks() {
+  injectLinks(settings: Settings) {
     for (const selector of OPENSEARCH_VIEWER_SELECTORS) {
       const viewers = document.querySelectorAll(selector);
       for (const viewer of viewers) {
         if (!this.knownViewers.has(viewer)) {
           this.knownViewers.add(viewer);
           logging.log("Viewer detected", viewer);
-          injectIntoViewer(viewer);
+          injectIntoViewer(viewer, settings);
         } else {
-          injectViewerLinks(viewer);
+          injectViewerLinks(viewer, settings);
         }
       }
     }
 
-    injectViewerLinks(document);
-    injectGridLinks();
+    injectViewerLinks(document, settings);
+    if (settings.injectTableLinks) {
+      injectGridLinks(settings);
+    }
   }
 }
 
@@ -183,6 +202,7 @@ class OpenSearchDashboard {
 class Detector {
   dashboard: KibanaDashboard | OpenSearchDashboard | null = null;
   state: "new" | "dashboard-detected" = "new";
+  settings: Settings = { ...DEFAULT_SETTINGS };
 
   get isDetected(): boolean {
     return this.dashboard !== null;
@@ -198,7 +218,7 @@ class Detector {
   }
 
   injectLinks() {
-    this.dashboard?.injectLinks();
+    this.dashboard?.injectLinks(this.settings);
   }
 
   handleMutation(): void {
@@ -239,8 +259,18 @@ class Detector {
 export default defineContentScript({
   matches: ["<all_urls>"],
 
-  main() {
+  async main() {
     const detector = new Detector();
+
+    // Load initial settings
+    detector.settings = await loadSettings();
+
+    // Watch for settings changes
+    preserveFiltersItem.watch((v) => { detector.settings.preserveFilters = v; });
+    preserveDateRangeItem.watch((v) => { detector.settings.preserveDateRange = v; });
+    preserveColumnsItem.watch((v) => { detector.settings.preserveColumns = v; });
+    injectTableLinksItem.watch((v) => { detector.settings.injectTableLinks = v; });
+
     detector.watch();
 
     logging.log("Content script is injected", detector);

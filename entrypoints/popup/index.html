@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kibana Clicker Settings</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>Kibana Clicker</h1>
+
+    <label class="setting" data-setting="preserveFilters">
+      <input type="checkbox" />
+      <div class="setting-text">
+        <span class="setting-label">Preserve filters</span>
+        <span class="setting-desc">Carry current filters to generated links</span>
+      </div>
+    </label>
+
+    <label class="setting" data-setting="preserveDateRange">
+      <input type="checkbox" />
+      <div class="setting-text">
+        <span class="setting-label">Preserve date range</span>
+        <span class="setting-desc">Carry current time range to generated links</span>
+      </div>
+    </label>
+
+    <label class="setting" data-setting="preserveColumns">
+      <input type="checkbox" />
+      <div class="setting-text">
+        <span class="setting-label">Preserve columns</span>
+        <span class="setting-desc">Keep selected columns in generated links</span>
+      </div>
+    </label>
+
+    <label class="setting" data-setting="injectTableLinks">
+      <input type="checkbox" />
+      <div class="setting-text">
+        <span class="setting-label">Inject table links</span>
+        <span class="setting-desc">Add clickable links in Discover table cells</span>
+      </div>
+    </label>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

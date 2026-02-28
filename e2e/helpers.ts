@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
 /**
  * Navigate to Kibana/OSD Discover page and wait for it to load.
@@ -170,4 +170,35 @@ export async function countClickerLinks(page: Page) {
   // Wait for the content script's MutationObserver to detect and process the doc viewer
   await page.waitForTimeout(5000);
   return await page.locator(".kibana-clicker-link").count();
+}
+
+/**
+ * Open the extension popup in a new page by navigating to its chrome-extension URL.
+ */
+export async function openPopup(
+  context: BrowserContext,
+  extensionId: string,
+): Promise<Page> {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  await page.waitForLoadState("domcontentloaded");
+  return page;
+}
+
+/**
+ * Reset all extension settings to defaults by clearing sync storage.
+ */
+export async function resetSettings(
+  context: BrowserContext,
+  extensionId: string,
+) {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  await page.waitForLoadState("domcontentloaded");
+  await page.evaluate(() => {
+    return new Promise<void>((resolve) => {
+      chrome.storage.sync.clear(() => resolve());
+    });
+  });
+  await page.close();
 }

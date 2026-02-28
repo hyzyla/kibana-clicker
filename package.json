@@ -20,6 +20,7 @@
     "test:e2e:v8": "playwright test --config e2e/playwright.config.ts kibana-v8.spec.ts",
     "test:e2e:v9": "playwright test --config e2e/playwright.config.ts kibana-v9.spec.ts",
     "test:e2e:opensearch": "playwright test --config e2e/playwright.config.ts opensearch.spec.ts",
+    "test:e2e:settings": "playwright test --config e2e/playwright.config.ts settings.spec.ts",
     "docker:v8": "docker compose -f e2e/docker-compose.yml --profile v8 up -d",
     "docker:v9": "docker compose -f e2e/docker-compose.yml --profile v9 up -d",
     "docker:opensearch": "docker compose -f e2e/docker-compose.yml --profile opensearch up -d",

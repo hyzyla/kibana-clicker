@@ -89,7 +89,13 @@ export class KibanaURL {
    *
    * This method doesn't mutate object state
    */
-  withQuery(options: { name: string; value: string }): string {
+  withQuery(options: {
+    name: string;
+    value: string;
+    preserveFilters?: boolean;
+    preserveDateRange?: boolean;
+    preserveColumns?: boolean;
+  }): string {
     // To avoid mutation of previous hash params clone it
     const prevHashParams = structuredClone(this.hashParamsObj);
 
@@ -98,6 +104,19 @@ export class KibanaURL {
       name: options.name,
       value: options.value,
     });
+
+    // Conditionally strip hash params based on settings
+    if (!options.preserveFilters) {
+      const a = newHashParamsObj["_a"] as Record<string, RisonValue> | undefined;
+      if (a) delete a["filters"];
+    }
+    if (!options.preserveColumns) {
+      const a = newHashParamsObj["_a"] as Record<string, RisonValue> | undefined;
+      if (a) delete a["columns"];
+    }
+    if (!options.preserveDateRange) {
+      delete newHashParamsObj["_g"];
+    }
 
     // Set build new hash params string and set it to previous URL
     const newHashParams = this.toHashParamsString(newHashParamsObj);

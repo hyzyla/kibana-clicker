@@ -12,6 +12,7 @@ const extensionPath = path.resolve(__dirname, "..", ".output", "chrome-mv3");
 export const test = base.extend<{
   context: BrowserContext;
   extensionPage: Page;
+  extensionId: string;
 }>({
   // biome-ignore lint: Playwright fixture pattern requires destructuring
   context: async ({}, use) => {
@@ -34,6 +35,16 @@ export const test = base.extend<{
   extensionPage: async ({ context }, use) => {
     const page = context.pages()[0] || await context.newPage();
     await use(page);
+  },
+
+  extensionId: async ({ context }, use) => {
+    // Wait for the background service worker to be registered
+    let sw = context.serviceWorkers()[0];
+    if (!sw) {
+      sw = await context.waitForEvent("serviceworker");
+    }
+    const id = sw.url().split("/")[2];
+    await use(id);
   },
 });
 
