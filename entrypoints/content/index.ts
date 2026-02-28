@@ -8,6 +8,7 @@ import {
   preserveFiltersItem,
   preserveDateRangeItem,
   preserveColumnsItem,
+  preserveQueryItem,
 } from "@/utils/settings";
 
 import "./style.css";
@@ -34,6 +35,7 @@ function createLink(name: string, value: string, settings: Settings): Element {
     preserveFilters: settings.preserveFilters,
     preserveDateRange: settings.preserveDateRange,
     preserveColumns: settings.preserveColumns,
+    preserveQuery: settings.preserveQuery,
   });
 
   link.setAttribute("href", url);
@@ -243,6 +245,7 @@ export default defineContentScript({
     preserveFiltersItem.watch((v) => { detector.settings.preserveFilters = v; detector.reinjectLinks(); });
     preserveDateRangeItem.watch((v) => { detector.settings.preserveDateRange = v; detector.reinjectLinks(); });
     preserveColumnsItem.watch((v) => { detector.settings.preserveColumns = v; detector.reinjectLinks(); });
+    preserveQueryItem.watch((v) => { detector.settings.preserveQuery = v; detector.reinjectLinks(); });
 
     detector.watch();
 

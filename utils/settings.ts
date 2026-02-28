@@ -4,12 +4,14 @@ export interface Settings {
   preserveFilters: boolean;
   preserveDateRange: boolean;
   preserveColumns: boolean;
+  preserveQuery: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   preserveFilters: false,
   preserveDateRange: true,
   preserveColumns: true,
+  preserveQuery: false,
 };
 
 export const preserveFiltersItem = storage.defineItem<boolean>(
@@ -27,12 +29,18 @@ export const preserveColumnsItem = storage.defineItem<boolean>(
   { fallback: DEFAULT_SETTINGS.preserveColumns },
 );
 
+export const preserveQueryItem = storage.defineItem<boolean>(
+  "sync:preserveQuery",
+  { fallback: DEFAULT_SETTINGS.preserveQuery },
+);
+
 export async function loadSettings(): Promise<Settings> {
-  const [preserveFilters, preserveDateRange, preserveColumns] =
+  const [preserveFilters, preserveDateRange, preserveColumns, preserveQuery] =
     await Promise.all([
       preserveFiltersItem.getValue(),
       preserveDateRangeItem.getValue(),
       preserveColumnsItem.getValue(),
+      preserveQueryItem.getValue(),
     ]);
-  return { preserveFilters, preserveDateRange, preserveColumns };
+  return { preserveFilters, preserveDateRange, preserveColumns, preserveQuery };
 }

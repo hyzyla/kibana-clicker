@@ -2,6 +2,28 @@ import rison from "rison";
 
 type RisonValue = string | number | boolean | null | RisonValue[] | { [key: string]: RisonValue };
 
+/**
+ * Parses and manipulates Kibana/OpenSearch Discover URLs.
+ *
+ * Kibana URLs use a hash-based routing with rison-encoded parameters:
+ *
+ *   http://kibana:5601/app/discover#/?_a=(...)&_g=(...)&_q=(...)
+ *   |   base URL      |    path      |     hash params          |
+ *
+ * Hash params (rison-encoded):
+ *   _a  — App state: query, filters, columns, sort, data source, etc.
+ *         Example: _a=(query:(language:kuery,query:'host:"server-1"'),filters:!(),columns:!())
+ *   _g  — Global state: time range (from/to), refresh interval
+ *         Example: _g=(time:(from:now-15m,to:now),refreshInterval:(pause:!t,value:60000))
+ *   _q  — Query state (OpenSearch): mirrors _a.query for OpenSearch Dashboards compatibility
+ *
+ * Single document page has a different hash path:
+ *   #/doc/<dataViewId>/<indexName>?id=<docId>&_g=(...)
+ *   — contains doc-specific params like "id" that are not valid for Discover
+ *
+ * Rison is a compact JSON-like encoding used by Kibana in URL hash params.
+ * Example: (key:value,list:!(a,b)) is equivalent to {"key":"value","list":["a","b"]}
+ */
 export class KibanaURL {
   private static last: {
     url: string;
@@ -20,7 +42,8 @@ export class KibanaURL {
     this.url = new URL(url);
     this.hash = this.url.hash;
 
-    // Hash param is not URL encoded and it contans path and params with rison encoded values
+    // Hash is not URL-encoded and contains a path + rison-encoded params
+    // e.g. "#/?_a=(query:...)&_g=(time:...)" → path="#/", params="_a=(...)&_g=(...)"
     const [hashPath, hashParams] = this.hash.split("?", 2);
     this.hashPath = hashPath;
     this.hashParams = hashParams;
@@ -45,6 +68,7 @@ export class KibanaURL {
     return url;
   }
 
+  /** Parse "key1=rison1&key2=rison2" into {key1: decoded1, key2: decoded2} */
   parseHashParams(hashParams: string | undefined): Record<string, RisonValue> {
     if (hashParams === undefined) {
       return {};
@@ -58,27 +82,55 @@ export class KibanaURL {
     return result;
   }
 
+  /**
+   * Set the KQL query
+   *
+   * Produces the structure Kibana expects:
+   *   _a.query = { language: "kuery", query: 'field:"value"' }
+   *   _q.query = { language: "kuery", query: 'field:"value"' }
+   *
+   * When preserveQuery is true, appends to the existing query with AND:
+   *   'existing query AND field:"value"'
+   */
   private setHashParamsQuery(
     params: Record<string, RisonValue>,
     options: {
       name: string;
       value: string;
+      preserveQuery?: boolean;
     },
   ): Record<string, RisonValue> {
-    const a = ((params["_a"] as Record<string, RisonValue>) ??= {});
-    const aQuery = ((a["query"] as Record<string, RisonValue>) ??= {});
-    aQuery["query"] = `${options.name}:"${options.value}"`;
+    const newQuery = `${options.name}:"${options.value}"`;
 
+    // _a — app state (used by Kibana)
+    const a = ((params["_a"] as Record<string, RisonValue>) ??= {});
+    const existingAQuery = options.preserveQuery
+      ? ((a["query"] as Record<string, RisonValue> | undefined)?.["query"] as string | undefined)
+      : undefined;
+    a["query"] = {
+      language: "kuery",
+      query: existingAQuery ? `${existingAQuery} AND ${newQuery}` : newQuery,
+    };
+
+    // _q — query state (used by OpenSearch Dashboards)
     const q = ((params["_q"] as Record<string, RisonValue>) ??= {});
-    const qQuery = ((q["query"] as Record<string, RisonValue>) ??= {});
-    qQuery["query"] = `${options.name}:"${options.value}"`;
+    const existingQQuery = options.preserveQuery
+      ? ((q["query"] as Record<string, RisonValue> | undefined)?.["query"] as string | undefined)
+      : undefined;
+    q["query"] = {
+      language: "kuery",
+      query: existingQQuery ? `${existingQQuery} AND ${newQuery}` : newQuery,
+    };
+
     return params;
   }
 
+  /** Check if current page is a single document view (#/doc/<dataViewId>/<index>) */
   private isDocPage(): boolean {
     return this.hashPath.startsWith("#/doc/");
   }
 
+  /** Encode params back to "key1=rison1&key2=rison2" format */
   toHashParamsString(hashParams: Record<string, RisonValue>): string {
     return Object.entries(hashParams)
       .map(([key, value]) => {
@@ -88,9 +140,11 @@ export class KibanaURL {
   }
 
   /**
-   * Returns new URL with given query
+   * Build a new Discover URL with the given field:value as a KQL query.
+   * Does not mutate object state — returns a new URL string.
    *
-   * This method doesn't mutate object state
+   * On single doc pages (#/doc/...), redirects to Discover (#/) and strips
+   * doc-specific params (e.g. "id") that would be invalid on the Discover page.
    */
   withQuery(options: {
     name: string;
@@ -98,6 +152,7 @@ export class KibanaURL {
     preserveFilters?: boolean;
     preserveDateRange?: boolean;
     preserveColumns?: boolean;
+    preserveQuery?: boolean;
   }): string {
     // To avoid mutation of previous hash params clone it
     let prevHashParams = structuredClone(this.hashParamsObj);
@@ -116,9 +171,10 @@ export class KibanaURL {
     const newHashParamsObj = this.setHashParamsQuery(prevHashParams, {
       name: options.name,
       value: options.value,
+      preserveQuery: options.preserveQuery,
     });
 
-    // Conditionally strip hash params based on settings
+    // Strip _a sub-keys (filters, columns) and _g (global/time state) based on settings
     if (!options.preserveFilters) {
       const a = newHashParamsObj["_a"] as Record<string, RisonValue> | undefined;
       if (a) delete a["filters"];
@@ -128,7 +184,7 @@ export class KibanaURL {
       if (a) delete a["columns"];
     }
     if (!options.preserveDateRange) {
-      delete newHashParamsObj["_g"];
+      delete newHashParamsObj["_g"]; // _g holds time range and refresh interval
     }
 
     // Set build new hash params string and set it to previous URL
