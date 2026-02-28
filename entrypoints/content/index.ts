@@ -4,154 +4,192 @@ import * as logging from "@/utils/logging";
 
 import "./style.css";
 
-class BaseDashboard {
-  FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
-  VIEWER_ROWS_SELECTOR = "[data-test-subj^='tableDocViewRow-'][data-test-subj$='-value']";
+const FIELD_NAME_REGEXP = /^tableDocViewRow-(?<fieldName>.*)-value$/;
+const VIEWER_ROWS_SELECTOR = "[data-test-subj^='tableDocViewRow-'][data-test-subj$='-value']";
 
-  constructor() {}
-
-  getFieldName(element: Element): string | null {
-    const subjectAttr = element.getAttribute("data-test-subj") ?? "";
-    const search = subjectAttr.match(this.FIELD_NAME_REGEXP);
-    if (search === null || !search.groups) {
-      return null;
-    }
-    return search.groups.fieldName;
+function getViewerRowFieldName(element: Element): string | null {
+  const subjectAttr = element.getAttribute("data-test-subj") ?? "";
+  const search = subjectAttr.match(FIELD_NAME_REGEXP);
+  if (search === null || !search.groups) {
+    return null;
   }
-
-  getFieldValue(element: Element): string | null {
-    return element.textContent;
-  }
-
-  /**
-   * Create new link element with URL to Kibana with query by given field name and value
-   */
-  createLink(name: string, value: string): Element {
-    const link = document.createElement("a");
-
-    const kibanaURL = KibanaURL.fromCurrentURL();
-    const url = kibanaURL.withQuery({ name, value });
-
-    link.setAttribute("href", url);
-    link.setAttribute("target", "_blank");
-    link.setAttribute("rel", "noreferrer noopener");
-    link.classList.add("kibana-clicker-link");
-    link.textContent = value;
-    return link;
-  }
-
-  onViewerDetected(viewer: Element, waitedMs: number = 0) {
-    // Viewer is already detected and links are already injected, not need to do it again
-    if (viewer.attributes.getNamedItem("data-kibana-clicker-injected")) {
-      return;
-    }
-
-    logging.log("Viewer is detected", viewer);
-
-    // We waited 10 seconds and rows are still not rendered, so we give up here
-    if (waitedMs > 10_000) {
-      logging.log("More than expected iterations", waitedMs);
-      return;
-    }
-
-    const rows = viewer.querySelectorAll(this.VIEWER_ROWS_SELECTOR);
-
-    // If rows are not rendered yet, wait 100ms and try again
-    if (rows.length === 0) {
-      setTimeout(() => this.onViewerDetected(viewer, waitedMs + 100), 100);
-      return;
-    }
-
-    logging.log("Injecting links...");
-    rows.forEach((row) => {
-      const fieldName = this.getFieldName(row);
-      if (!fieldName) {
-        return;
-      }
-      const fieldValue = this.getFieldValue(row);
-      if (!fieldValue) {
-        return;
-      }
-      const link = this.createLink(fieldName, fieldValue);
-      row.replaceChildren(link);
-    });
-
-    viewer.setAttribute("data-kibana-clicker-injected", "true");
-  }
+  return search.groups.fieldName;
 }
 
-class KibanaDashaborad extends BaseDashboard {
-  constructor(readonly rootElement: Element) {
-    super();
-  }
+function createLink(name: string, value: string): Element {
+  const link = document.createElement("a");
 
-  /**
-   * Check if given node can be a indicator of Kibana dashboard
-   */
-  static detect(): KibanaDashaborad | null {
-    const element = document.getElementById("kibana-body");
-    if (element === null) return null;
-    return new KibanaDashaborad(element);
-  }
+  const kibanaURL = KibanaURL.fromCurrentURL();
+  const url = kibanaURL.withQuery({ name, value });
 
-  detectViewers() {
-    // It can be multiple viewers on the page and we need to inject links to all of them
-    const nodeWithAttr = document.querySelectorAll(
-      '[data-test-subj="kbnDocViewer"]:not([data-kibana-clicker-injected])',
-    );
-    for (const node of nodeWithAttr) {
-      this.onViewerDetected(node);
-    }
-
-    const nodeWithClass = document.querySelectorAll(
-      ".kbnDocViewer:not([data-kibana-clicker-injected])",
-    );
-    for (const node of nodeWithClass) {
-      return this.onViewerDetected(node);
-    }
-  }
+  link.setAttribute("href", url);
+  link.setAttribute("target", "_blank");
+  link.setAttribute("rel", "noreferrer noopener");
+  link.classList.add("kibana-clicker-link");
+  link.textContent = value;
+  return link;
 }
 
-class OpenSearchDashaborad extends BaseDashboard {
-  constructor(readonly rootElement: Element) {
-    super();
-  }
+/**
+ * Inject links into doc viewer rows within the given element.
+ * Only processes rows that don't already have a link (idempotent).
+ */
+function injectViewerLinks(root: Element | Document) {
+  const rows = root.querySelectorAll(VIEWER_ROWS_SELECTOR);
+  for (const row of rows) {
+    if (row.querySelector(".kibana-clicker-link")) continue;
 
-  static detect(): OpenSearchDashaborad | null {
-    const element = document.getElementById("opensearch-dashboards-body");
-    if (element === null) return null;
-    return new OpenSearchDashaborad(element);
-  }
+    const fieldName = getViewerRowFieldName(row);
+    if (!fieldName) continue;
 
-  detectViewers(): void {
-    // osdDocViewer
-    const nodeWithClass = document.querySelectorAll(
-      ".osdDocViewer:not([data-kibana-clicker-injected])",
-    );
-    for (const node of nodeWithClass) {
-      return this.onViewerDetected(node);
-    }
+    const fieldValue = row.textContent;
+    if (!fieldValue) continue;
+
+    const link = createLink(fieldName, fieldValue);
+    row.replaceChildren(link);
   }
 }
 
 /**
- * Class that detect Kibana or OpenSearch Dashboards
+ * Try to inject links into a viewer element. If rows aren't rendered yet,
+ * poll until they appear (up to 10 seconds).
+ */
+function injectIntoViewer(viewer: Element, waitedMs: number = 0) {
+  if (waitedMs > 10_000) {
+    logging.log("Viewer polling timed out", waitedMs);
+    return;
+  }
+
+  const rows = viewer.querySelectorAll(VIEWER_ROWS_SELECTOR);
+
+  if (rows.length === 0) {
+    setTimeout(() => injectIntoViewer(viewer, waitedMs + 100), 100);
+    return;
+  }
+
+  injectViewerLinks(viewer);
+}
+
+/**
+ * Inject links into the Discover table's description list cells.
+ * The _source column renders field/value pairs as <dt>/<dd> inside a <dl>.
+ * We wrap the text inside each <dd> with a link, preserving the <dd> element
+ * so React's reconciliation is not disrupted.
+ */
+function injectGridLinks() {
+  const lists = document.querySelectorAll(
+    '[data-test-subj="discoverCellDescriptionList"]',
+  );
+
+  for (const list of lists) {
+    const items = list.querySelectorAll("dt, dd");
+    for (let i = 0; i < items.length - 1; i += 2) {
+      const dt = items[i];
+      const dd = items[i + 1];
+
+      if (dt.tagName !== "DT" || dd.tagName !== "DD") continue;
+      if (dd.querySelector(".kibana-clicker-link")) continue;
+
+      const fieldName = dt.textContent?.trim();
+      const fieldValue = dd.textContent?.trim();
+      if (!fieldName || !fieldValue || fieldValue === "-") continue;
+
+      const textNode = dd.firstChild;
+      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) continue;
+
+      const link = createLink(fieldName, fieldValue);
+      dd.replaceChild(link, textNode);
+    }
+  }
+}
+
+const KIBANA_VIEWER_SELECTORS = [
+  '[data-test-subj="kbnDocViewer"]',
+  ".kbnDocViewer",
+];
+
+const OPENSEARCH_VIEWER_SELECTORS = [".osdDocViewer"];
+
+class KibanaDashboard {
+  private knownViewers = new WeakSet<Element>();
+
+  constructor(readonly rootElement: Element) {}
+
+  static detect(): KibanaDashboard | null {
+    const element = document.getElementById("kibana-body");
+    if (element === null) return null;
+    return new KibanaDashboard(element);
+  }
+
+  injectLinks() {
+    // Detect viewer containers and poll for rows within them.
+    // Search entire document because Kibana renders flyouts as portals
+    // outside the main app container.
+    for (const selector of KIBANA_VIEWER_SELECTORS) {
+      const viewers = document.querySelectorAll(selector);
+      for (const viewer of viewers) {
+        if (!this.knownViewers.has(viewer)) {
+          this.knownViewers.add(viewer);
+          logging.log("Viewer detected", viewer);
+          injectIntoViewer(viewer);
+        } else {
+          // Re-inject into known viewers (handles pagination/content changes)
+          injectViewerLinks(viewer);
+        }
+      }
+    }
+
+    // Also scan entire document for rows outside viewers (single doc page)
+    injectViewerLinks(document);
+
+    // Inject into Discover table description list cells
+    injectGridLinks();
+  }
+}
+
+class OpenSearchDashboard {
+  private knownViewers = new WeakSet<Element>();
+
+  constructor(readonly rootElement: Element) {}
+
+  static detect(): OpenSearchDashboard | null {
+    const element = document.getElementById("opensearch-dashboards-body");
+    if (element === null) return null;
+    return new OpenSearchDashboard(element);
+  }
+
+  injectLinks() {
+    for (const selector of OPENSEARCH_VIEWER_SELECTORS) {
+      const viewers = document.querySelectorAll(selector);
+      for (const viewer of viewers) {
+        if (!this.knownViewers.has(viewer)) {
+          this.knownViewers.add(viewer);
+          logging.log("Viewer detected", viewer);
+          injectIntoViewer(viewer);
+        } else {
+          injectViewerLinks(viewer);
+        }
+      }
+    }
+
+    injectViewerLinks(document);
+    injectGridLinks();
+  }
+}
+
+/**
+ * Class that detects Kibana or OpenSearch Dashboards and injects links
  */
 class Detector {
-  dashboard: KibanaDashaborad | OpenSearchDashaborad | null = null;
+  dashboard: KibanaDashboard | OpenSearchDashboard | null = null;
   state: "new" | "dashboard-detected" = "new";
 
-  constructor() {}
-
-  /**
-   * Is Kibana or OpenSearch Dashboards is already detected
-   */
   get isDetected(): boolean {
     return this.dashboard !== null;
   }
 
-  detectDashbaord(): void {
-    const dashboard = KibanaDashaborad.detect() || OpenSearchDashaborad.detect();
+  detectDashboard(): void {
+    const dashboard = KibanaDashboard.detect() || OpenSearchDashboard.detect();
     if (dashboard) {
       logging.log("Dashboard detected", dashboard);
       this.dashboard = dashboard;
@@ -159,43 +197,33 @@ class Detector {
     }
   }
 
-  detectViewers() {
-    this.dashboard?.detectViewers();
+  injectLinks() {
+    this.dashboard?.injectLinks();
   }
 
-  /**
-   * Handle new DOM node
-   */
-  handleNewNode(): void {
+  handleMutation(): void {
     switch (this.state) {
       case "new":
-        this.detectDashbaord();
+        this.detectDashboard();
         break;
       case "dashboard-detected":
-        this.detectViewers();
+        this.injectLinks();
         break;
     }
   }
 
-  /**
-   * Funciton that handle new DOM node. It's called in batched mode not more than
-   * once per 100ms
-   */
-  handleNewNodeDebounced = throttleDebounce(this.handleNewNode, 100);
+  handleMutationDebounced = throttleDebounce(this.handleMutation, 100);
 
-  /**
-   * Start observing DOM changes to detect Kibana or OpenSearch Dashboards
-   */
   watch() {
     const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (!mutation.addedNodes) return;
-
-        mutation.addedNodes.forEach((node) => {
-          if (!(node instanceof Element)) return;
-          this.handleNewNodeDebounced();
-        });
-      });
+      for (const mutation of mutations) {
+        if (!mutation.addedNodes) continue;
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          this.handleMutationDebounced();
+          return;
+        }
+      }
     });
 
     observer.observe(document.body, {

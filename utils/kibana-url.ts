@@ -101,7 +101,10 @@ export class KibanaURL {
 
     // Set build new hash params string and set it to previous URL
     const newHashParams = this.toHashParamsString(newHashParamsObj);
-    const newHash = `${this.hashPath}?${newHashParams}`;
+
+    // On single document page (#/doc/...), redirect to Discover page
+    const hashPath = this.hashPath.startsWith("#/doc/") ? "#/" : this.hashPath;
+    const newHash = `${hashPath}?${newHashParams}`;
 
     const url = new URL(this.rawUrl);
     url.hash = newHash;
